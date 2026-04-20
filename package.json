@@ -1,0 +1,8 @@
+{
+  "name": "ksfe-project",
+  "private": true,
+  "workspaces": [
+    "apps/frontend",
+    "apps/backend"
+  ]
+}
