@@ -1,6 +1,23 @@
+<script setup lang="ts">
+import { useRouter } from 'vue-router'
+import SearchBar, { type SearchBarItem } from '../../components/searchBar/SearchBar.vue'
+import { getVisibleModules } from '../../modules'
+
+const router = useRouter()
+
+const searchItems: SearchBarItem[] = [
+  'sreeHari',
+  'sarvesh',
+  'abhinav'
+]
+
+const goToSearchItem = (item: SearchBarItem): void => {
+  router.push(item.path)
+}
+</script>
+
 <template>
   <section>
-    <h1>Insurance</h1>
-    <p>This is the Insurance page.</p>
+    <SearchBar :items="searchItems" @select="goToSearchItem" />
   </section>
 </template>
