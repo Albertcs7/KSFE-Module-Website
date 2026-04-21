@@ -2,8 +2,8 @@ import type { RouteRecordRaw } from 'vue-router'
 
 import DashboardLayout from '../layouts/DashboardLayout.vue'
 import HomePage from './pages/HomePage.vue'
-import InsuranceLayout from '@/layouts/InsuranceLayout.vue'
-import InsurancePage from './pages/InsurancePage.vue'
+import InsuranceLayout from '../modules/Insurance/layout/InsuranceLayout.vue'
+import InsurancePage from '../modules/Insurance/InsurancePage.vue'
 
 export const appRoutes: RouteRecordRaw[] = [
   {

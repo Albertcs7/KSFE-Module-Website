@@ -1,45 +1,45 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref } from "vue";
 
-import AppSidebar from '../components/layout/AppSidebar.vue'
-import AppTopbar from '../components/layout/AppTopbar.vue'
+import AppSidebar from "../../../components/layout/AppSidebar.vue";
+import AppTopbar from "../../../components/layout/AppTopbar.vue";
 
-const MOBILE_BREAKPOINT = 960
+const MOBILE_BREAKPOINT = 960;
 
-const isMobile = ref(false)
-const isSidebarCollapsed = ref(false)
-const isMobileSidebarOpen = ref(false)
+const isMobile = ref(false);
+const isSidebarCollapsed = ref(false);
+const isMobileSidebarOpen = ref(false);
 
 const syncViewport = (): void => {
-  const mobile = window.innerWidth < MOBILE_BREAKPOINT
-  isMobile.value = mobile
+  const mobile = window.innerWidth < MOBILE_BREAKPOINT;
+  isMobile.value = mobile;
 
   if (!mobile) {
-    isMobileSidebarOpen.value = false
+    isMobileSidebarOpen.value = false;
   }
-}
+};
 
 const toggleSidebar = (): void => {
   if (isMobile.value) {
-    isMobileSidebarOpen.value = !isMobileSidebarOpen.value
-    return
+    isMobileSidebarOpen.value = !isMobileSidebarOpen.value;
+    return;
   }
 
-  isSidebarCollapsed.value = !isSidebarCollapsed.value
-}
+  isSidebarCollapsed.value = !isSidebarCollapsed.value;
+};
 
 const closeMobileSidebar = (): void => {
-  isMobileSidebarOpen.value = false
-}
+  isMobileSidebarOpen.value = false;
+};
 
 onMounted(() => {
-  syncViewport()
-  window.addEventListener('resize', syncViewport)
-})
+  syncViewport();
+  window.addEventListener("resize", syncViewport);
+});
 
 onBeforeUnmount(() => {
-  window.removeEventListener('resize', syncViewport)
-})
+  window.removeEventListener("resize", syncViewport);
+});
 </script>
 
 <template>
