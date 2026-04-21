@@ -1,14 +1,22 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
-import SearchBar, { type SearchBarItem } from '../../components/searchBar/SearchBar.vue'
-import { getVisibleModules } from '../../modules'
+import SearchBar, { type SearchBarItem } from '../../../components/searchBar/SearchBar.vue'
 
 const router = useRouter()
 
 const searchItems: SearchBarItem[] = [
-  'sreeHari',
-  'sarvesh',
-  'abhinav'
+  { label: 'sreeHari',
+    path:'',
+    description:''
+   },
+  { label: 'sarvesh',
+    path:'',
+    description:''
+   },
+  { label: 'abhinav',
+    path:'',
+    description:''
+   }
 ]
 
 const goToSearchItem = (item: SearchBarItem): void => {
