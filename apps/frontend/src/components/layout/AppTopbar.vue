@@ -38,6 +38,7 @@ const logout = (): void => {
         <span />
         <span />
       </button>
+      <img src="/KSFE TOP LOGO.png" alt="KSFE Top Logo" class="topbar-logo" />
     </div>
 
     <div class="profile">
@@ -90,6 +91,14 @@ const logout = (): void => {
   display: flex;
   align-items: center;
   gap: 0.875rem;
+}
+
+.topbar-logo {
+  height: 2.5rem;
+  width: auto;
+  max-width: 150px;
+  object-fit: contain;
+  margin-left: 0.5rem;
 }
 
 .menu-toggle {
