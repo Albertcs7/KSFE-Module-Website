@@ -59,7 +59,7 @@ const handleSubmit = () => {
       <form @submit.prevent="handleSubmit" class="modal-form">
         <div class="form-group">
           <label for="empCode">Employee Code</label>
-          <input id="empCode" v-model="formData.empCode" type="text" placeholder="e.g. EMP001" required />
+          <input id="empCode" v-model="formData.empCode" type="text" pattern="[0-9]+" placeholder="e.g. 3571" required />
         </div>
         
         <div class="form-group">

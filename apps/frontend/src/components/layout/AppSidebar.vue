@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { getVisibleModules } from "../../modules";
 
 interface SidebarProps {
@@ -27,6 +27,7 @@ const emit = defineEmits<{
 }>();
 
 const route = useRoute();
+const router = useRouter();
 
 // Only show modules the current user has access to.
 // Reactive — updates automatically when auth state changes.
@@ -60,6 +61,13 @@ const isActive = (path: string): boolean => {
 };
 
 const handleMenuClick = (): void => {
+  if (props.isMobile) {
+    emit("close-mobile");
+  }
+};
+
+const handleLogout = (): void => {
+  router.push('/login');
   if (props.isMobile) {
     emit("close-mobile");
   }
@@ -130,7 +138,7 @@ const handleMenuClick = (): void => {
           <div v-else class="menu-group">
             <button
               class="menu-link"
-              :class="{ active: isActive(item.to) || expandedItems[item.label] }"
+              :class="{ 'active-parent': isActive(item.to) || expandedItems[item.label] }"
               @click="toggleExpand(item.label)"
               style="justify-content: space-between; width: 100%; border: none; background: transparent; cursor: pointer; font-family: inherit; font-size: inherit; text-align: left;"
             >
@@ -193,6 +201,19 @@ const handleMenuClick = (): void => {
           </div>
         </div>
       </nav>
+
+      <div class="sidebar-footer">
+        <button class="menu-link logout-btn" @click="handleLogout">
+          <span class="menu-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+              <polyline points="16 17 21 12 16 7"></polyline>
+              <line x1="21" y1="12" x2="9" y2="12"></line>
+            </svg>
+          </span>
+          <span class="menu-label">Logout</span>
+        </button>
+      </div>
     </div>
   </aside>
 </template>
@@ -293,6 +314,10 @@ const handleMenuClick = (): void => {
   background: #ccf25c;
   color: #0f172a;
   box-shadow: inset 0 0 0 1px rgba(204, 242, 92, 0.8);
+}
+
+.menu-link.active-parent {
+  color: #ccf25c;
 }
 
 .menu-icon {
@@ -420,6 +445,32 @@ const handleMenuClick = (): void => {
 .sidebar.collapsed:not(.mobile) .dropdown-chevron,
 .sidebar.collapsed:not(.mobile) .menu-children {
   display: none;
+}
+
+.sidebar-footer {
+  margin-top: auto;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(198, 234, 169, 0.18);
+}
+
+.logout-btn {
+  width: 100%;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  font-size: inherit;
+  color: #f87171;
+}
+
+.logout-btn:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #fca5a5;
+}
+
+.logout-btn .menu-icon svg {
+  stroke: currentColor;
 }
 
 @media (max-width: 959px) {

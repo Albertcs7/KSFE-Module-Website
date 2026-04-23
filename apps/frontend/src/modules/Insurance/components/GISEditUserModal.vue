@@ -1,48 +1,43 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useSLIStore, type SLIRemittance } from '../store/useSLIStore'
+import { ref, watch } from 'vue'
+import { useGISStore, type GISUser } from '../store/useGISStore'
 
 const props = defineProps<{
   isOpen: boolean
+  userToEdit: GISUser | null
 }>()
 
 const emit = defineEmits<{
   (e: 'close'): void
 }>()
 
-const sliStore = useSLIStore()
+const gisStore = useGISStore()
 
 // Form State
-const formData = ref<SLIRemittance>({
+const formData = ref<GISUser>({
   empCode: '',
-  sliPolicyNumber: '',
-  salaryMonth: '',
-  dueMonth: '',
-  amountDeducted: 0,
-  chequeId: ''
+  empName: '',
+  gisPolicyNumber: '',
+  premium: 0,
+  dateOfMaturity: ''
+})
+
+// Populate form when modal opens with a user
+watch(() => props.isOpen, (newVal) => {
+  if (newVal && props.userToEdit) {
+    formData.value = { ...props.userToEdit }
+  }
 })
 
 const handleSubmit = () => {
-  // Validate basic data
-  if (!formData.value.empCode || !formData.value.sliPolicyNumber || !formData.value.salaryMonth) {
-    alert("Please fill in required fields: Employee Code, Policy Number, and Salary Month.")
+  if (!formData.value.empCode || !formData.value.empName) {
+    alert("Please fill in required fields: Employee Code and Name.")
     return
   }
   
-  // Save to our mock database
-  sliStore.addRemittance({ ...formData.value })
-  
-  // Reset form and close
-  formData.value = {
-    empCode: '',
-    sliPolicyNumber: '',
-    salaryMonth: '',
-    dueMonth: '',
-    amountDeducted: 0,
-    chequeId: ''
-  }
+  gisStore.updateUser({ ...formData.value })
   emit('close')
-  alert("Remittance added successfully!")
+  alert("User details updated successfully!")
 }
 </script>
 
@@ -50,48 +45,39 @@ const handleSubmit = () => {
   <div v-if="isOpen" class="modal-overlay" @click.self="emit('close')">
     <div class="modal-content">
       <div class="modal-header">
-        <h2>Monthly Remittance</h2>
+        <h2>Edit GIS User</h2>
         <button class="close-btn" @click="emit('close')">&times;</button>
       </div>
       
-      <!-- 
-        BACKEND/FRONTEND TEAM NOTE:
-        Maps to SLIRemittance interface. Ensure proper payload structure when linking to API.
-      -->
       <form @submit.prevent="handleSubmit" class="modal-form">
         <div class="form-group">
-          <label for="remitEmpCode">Employee Code</label>
-          <input id="remitEmpCode" v-model="formData.empCode" type="text" pattern="[0-9]+" placeholder="e.g. 3571" required />
+          <label for="editEmpCode">Employee Code (Read Only)</label>
+          <input id="editEmpCode" v-model="formData.empCode" type="text" readonly disabled />
         </div>
         
         <div class="form-group">
-          <label for="remitPolicyNumber">SLI Policy Number</label>
-          <input id="remitPolicyNumber" v-model="formData.sliPolicyNumber" type="text" placeholder="e.g. SLI-1234" required />
+          <label for="editEmpName">Employee Name</label>
+          <input id="editEmpName" v-model="formData.empName" type="text" required />
         </div>
         
         <div class="form-group">
-          <label for="salaryMonth">Salary Month</label>
-          <input id="salaryMonth" v-model="formData.salaryMonth" type="month" required />
+          <label for="editSliPolicyNumber">GIS Policy Number (Read Only)</label>
+          <input id="editSliPolicyNumber" v-model="formData.gisPolicyNumber" type="text" readonly disabled />
         </div>
         
         <div class="form-group">
-          <label for="dueMonth">Due Month</label>
-          <input id="dueMonth" v-model="formData.dueMonth" type="month" required />
+          <label for="editPremium">Premium (Amount)</label>
+          <input id="editPremium" v-model="formData.premium" type="number" required />
         </div>
         
         <div class="form-group">
-          <label for="amountDeducted">Amount Deducted</label>
-          <input id="amountDeducted" v-model="formData.amountDeducted" type="number" placeholder="0.00" required />
-        </div>
-        
-        <div class="form-group">
-          <label for="chequeId">Cheque ID (Optional)</label>
-          <input id="chequeId" v-model="formData.chequeId" type="text" placeholder="Optional" />
+          <label for="editDateOfMaturity">Date of Maturity</label>
+          <input id="editDateOfMaturity" v-model="formData.dateOfMaturity" type="date" required />
         </div>
         
         <div class="modal-actions">
           <button type="button" class="btn-cancel" @click="emit('close')">Cancel</button>
-          <button type="submit" class="btn-primary">Add Remittance</button>
+          <button type="submit" class="btn-primary">Save Changes</button>
         </div>
       </form>
     </div>
@@ -99,7 +85,6 @@ const handleSubmit = () => {
 </template>
 
 <style scoped>
-/* Common modal styles - in a real app, these could be extracted to a shared base modal component */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -121,10 +106,10 @@ const handleSubmit = () => {
   border-radius: 12px;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
   padding: 2rem;
-  animation: slideUp 0.3s ease-out;
+  animation: gisdeUp 0.3s ease-out;
 }
 
-@keyframes slideUp {
+@keyframes gisdeUp {
   from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
 }
@@ -177,7 +162,13 @@ const handleSubmit = () => {
   transition: border-color 0.2s;
 }
 
-.form-group input:focus {
+.form-group input:disabled {
+  background-color: #f1f5f9;
+  cursor: not-allowed;
+  color: #64748b;
+}
+
+.form-group input:focus:not(:disabled) {
   outline: none;
   border-color: #5bb700;
   box-shadow: 0 0 0 3px rgba(91, 183, 0, 0.1);

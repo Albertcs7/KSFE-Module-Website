@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useSLIStore, type SLIRemittance } from '../store/useSLIStore'
+import { useGISStore, type GISRemittance } from '../store/useGISStore'
 
 const props = defineProps<{
   isOpen: boolean
@@ -10,12 +10,12 @@ const emit = defineEmits<{
   (e: 'close'): void
 }>()
 
-const sliStore = useSLIStore()
+const gisStore = useGISStore()
 
 // Form State
-const formData = ref<SLIRemittance>({
+const formData = ref<GISRemittance>({
   empCode: '',
-  sliPolicyNumber: '',
+  gisPolicyNumber: '',
   salaryMonth: '',
   dueMonth: '',
   amountDeducted: 0,
@@ -24,18 +24,18 @@ const formData = ref<SLIRemittance>({
 
 const handleSubmit = () => {
   // Validate basic data
-  if (!formData.value.empCode || !formData.value.sliPolicyNumber || !formData.value.salaryMonth) {
+  if (!formData.value.empCode || !formData.value.gisPolicyNumber || !formData.value.salaryMonth) {
     alert("Please fill in required fields: Employee Code, Policy Number, and Salary Month.")
     return
   }
   
   // Save to our mock database
-  sliStore.addRemittance({ ...formData.value })
+  gisStore.addRemittance({ ...formData.value })
   
   // Reset form and close
   formData.value = {
     empCode: '',
-    sliPolicyNumber: '',
+    gisPolicyNumber: '',
     salaryMonth: '',
     dueMonth: '',
     amountDeducted: 0,
@@ -56,7 +56,7 @@ const handleSubmit = () => {
       
       <!-- 
         BACKEND/FRONTEND TEAM NOTE:
-        Maps to SLIRemittance interface. Ensure proper payload structure when linking to API.
+        Maps to GISRemittance interface. Ensure proper payload structure when linking to API.
       -->
       <form @submit.prevent="handleSubmit" class="modal-form">
         <div class="form-group">
@@ -65,8 +65,8 @@ const handleSubmit = () => {
         </div>
         
         <div class="form-group">
-          <label for="remitPolicyNumber">SLI Policy Number</label>
-          <input id="remitPolicyNumber" v-model="formData.sliPolicyNumber" type="text" placeholder="e.g. SLI-1234" required />
+          <label for="remitPolicyNumber">GIS Policy Number</label>
+          <input id="remitPolicyNumber" v-model="formData.gisPolicyNumber" type="text" placeholder="e.g. GIS-1234" required />
         </div>
         
         <div class="form-group">
@@ -121,10 +121,10 @@ const handleSubmit = () => {
   border-radius: 12px;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
   padding: 2rem;
-  animation: slideUp 0.3s ease-out;
+  animation: gisdeUp 0.3s ease-out;
 }
 
-@keyframes slideUp {
+@keyframes gisdeUp {
   from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
 }

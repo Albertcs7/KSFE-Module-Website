@@ -17,8 +17,8 @@ const VISIBLE_MODULES: VisibleModule[] = [
     icon: 'heart-handshake',
     children: [
       { label: 'SLI', path: '/insurance/sli' },
-      { label: 'Option 2', path: '/insurance/option2' },
-      { label: 'Option 3', path: '/insurance/option3' },
+      { label: 'GIS', path: '/insurance/gis' },
+      { label: 'Enroll User', path: '/insurance/enroll' },
       { label: 'Option 4', path: '/insurance/option4' },
       { label: 'Option 5', path: '/insurance/option5' },
     ]

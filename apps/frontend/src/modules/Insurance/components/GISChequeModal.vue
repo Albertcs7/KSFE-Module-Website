@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useSLIStore, type SLIRemittance } from '../store/useSLIStore'
+import { useGISStore, type GISCheque } from '../store/useGISStore'
 
 const props = defineProps<{
   isOpen: boolean
@@ -10,39 +10,32 @@ const emit = defineEmits<{
   (e: 'close'): void
 }>()
 
-const sliStore = useSLIStore()
+const gisStore = useGISStore()
 
 // Form State
-const formData = ref<SLIRemittance>({
-  empCode: '',
-  sliPolicyNumber: '',
-  salaryMonth: '',
-  dueMonth: '',
-  amountDeducted: 0,
-  chequeId: ''
+const formData = ref<GISCheque>({
+  encashmentDate: '',
+  receiptNoOrChequeNo: '',
+  salaryMonth: ''
 })
 
 const handleSubmit = () => {
-  // Validate basic data
-  if (!formData.value.empCode || !formData.value.sliPolicyNumber || !formData.value.salaryMonth) {
-    alert("Please fill in required fields: Employee Code, Policy Number, and Salary Month.")
+  if (!formData.value.encashmentDate || !formData.value.receiptNoOrChequeNo) {
+    alert("Please fill in required fields.")
     return
   }
   
   // Save to our mock database
-  sliStore.addRemittance({ ...formData.value })
+  gisStore.addCheque({ ...formData.value })
   
   // Reset form and close
   formData.value = {
-    empCode: '',
-    sliPolicyNumber: '',
-    salaryMonth: '',
-    dueMonth: '',
-    amountDeducted: 0,
-    chequeId: ''
+    encashmentDate: '',
+    receiptNoOrChequeNo: '',
+    salaryMonth: ''
   }
   emit('close')
-  alert("Remittance added successfully!")
+  alert("Cheque Details added successfully!")
 }
 </script>
 
@@ -50,48 +43,33 @@ const handleSubmit = () => {
   <div v-if="isOpen" class="modal-overlay" @click.self="emit('close')">
     <div class="modal-content">
       <div class="modal-header">
-        <h2>Monthly Remittance</h2>
+        <h2>Cheque Details</h2>
         <button class="close-btn" @click="emit('close')">&times;</button>
       </div>
       
       <!-- 
         BACKEND/FRONTEND TEAM NOTE:
-        Maps to SLIRemittance interface. Ensure proper payload structure when linking to API.
+        Maps to GISCheque interface.
       -->
       <form @submit.prevent="handleSubmit" class="modal-form">
         <div class="form-group">
-          <label for="remitEmpCode">Employee Code</label>
-          <input id="remitEmpCode" v-model="formData.empCode" type="text" pattern="[0-9]+" placeholder="e.g. 3571" required />
+          <label for="encashmentDate">Encashment Date</label>
+          <input id="encashmentDate" v-model="formData.encashmentDate" type="date" required />
         </div>
         
         <div class="form-group">
-          <label for="remitPolicyNumber">SLI Policy Number</label>
-          <input id="remitPolicyNumber" v-model="formData.sliPolicyNumber" type="text" placeholder="e.g. SLI-1234" required />
+          <label for="receiptNo">Receipt No / Cheque No</label>
+          <input id="receiptNo" v-model="formData.receiptNoOrChequeNo" type="text" placeholder="e.g. CHQ-998877" required />
         </div>
         
         <div class="form-group">
-          <label for="salaryMonth">Salary Month</label>
-          <input id="salaryMonth" v-model="formData.salaryMonth" type="month" required />
-        </div>
-        
-        <div class="form-group">
-          <label for="dueMonth">Due Month</label>
-          <input id="dueMonth" v-model="formData.dueMonth" type="month" required />
-        </div>
-        
-        <div class="form-group">
-          <label for="amountDeducted">Amount Deducted</label>
-          <input id="amountDeducted" v-model="formData.amountDeducted" type="number" placeholder="0.00" required />
-        </div>
-        
-        <div class="form-group">
-          <label for="chequeId">Cheque ID (Optional)</label>
-          <input id="chequeId" v-model="formData.chequeId" type="text" placeholder="Optional" />
+          <label for="chequeSalaryMonth">Salary Month</label>
+          <input id="chequeSalaryMonth" v-model="formData.salaryMonth" type="month" required />
         </div>
         
         <div class="modal-actions">
           <button type="button" class="btn-cancel" @click="emit('close')">Cancel</button>
-          <button type="submit" class="btn-primary">Add Remittance</button>
+          <button type="submit" class="btn-primary">Save Cheque</button>
         </div>
       </form>
     </div>
@@ -99,7 +77,7 @@ const handleSubmit = () => {
 </template>
 
 <style scoped>
-/* Common modal styles - in a real app, these could be extracted to a shared base modal component */
+/* Common modal styles */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -121,10 +99,10 @@ const handleSubmit = () => {
   border-radius: 12px;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
   padding: 2rem;
-  animation: slideUp 0.3s ease-out;
+  animation: gisdeUp 0.3s ease-out;
 }
 
-@keyframes slideUp {
+@keyframes gisdeUp {
   from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
 }

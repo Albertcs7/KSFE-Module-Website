@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useSLIStore, type SLIRemittance } from '../store/useSLIStore'
+import { useGISStore, type GISUser } from '../store/useGISStore'
 
 const props = defineProps<{
   isOpen: boolean
@@ -10,39 +10,44 @@ const emit = defineEmits<{
   (e: 'close'): void
 }>()
 
-const sliStore = useSLIStore()
+const gisStore = useGISStore()
 
 // Form State
-const formData = ref<SLIRemittance>({
+const formData = ref<GISUser>({
   empCode: '',
-  sliPolicyNumber: '',
-  salaryMonth: '',
-  dueMonth: '',
-  amountDeducted: 0,
-  chequeId: ''
+  empName: '',
+  gisPolicyNumber: '',
+  premium: 0,
+  dateOfMaturity: ''
 })
 
 const handleSubmit = () => {
   // Validate basic data
-  if (!formData.value.empCode || !formData.value.sliPolicyNumber || !formData.value.salaryMonth) {
-    alert("Please fill in required fields: Employee Code, Policy Number, and Salary Month.")
+  if (!formData.value.empCode || !formData.value.empName) {
+    alert("Please fill in required fields: Employee Code and Name.")
+    return
+  }
+  
+  // Enforce 1 policy limit per person for GIS
+  const existingPolicy = gisStore.users.find(u => u.empCode.toUpperCase() === formData.value.empCode.toUpperCase())
+  if (existingPolicy) {
+    alert("This employee already has a GIS policy. Only one policy is allowed per person in GIS.")
     return
   }
   
   // Save to our mock database
-  sliStore.addRemittance({ ...formData.value })
+  gisStore.addUser({ ...formData.value })
   
   // Reset form and close
   formData.value = {
     empCode: '',
-    sliPolicyNumber: '',
-    salaryMonth: '',
-    dueMonth: '',
-    amountDeducted: 0,
-    chequeId: ''
+    empName: '',
+    gisPolicyNumber: '',
+    premium: 0,
+    dateOfMaturity: ''
   }
   emit('close')
-  alert("Remittance added successfully!")
+  alert("User added successfully!")
 }
 </script>
 
@@ -50,48 +55,43 @@ const handleSubmit = () => {
   <div v-if="isOpen" class="modal-overlay" @click.self="emit('close')">
     <div class="modal-content">
       <div class="modal-header">
-        <h2>Monthly Remittance</h2>
+        <h2>Add New GIS User</h2>
         <button class="close-btn" @click="emit('close')">&times;</button>
       </div>
       
       <!-- 
         BACKEND/FRONTEND TEAM NOTE:
-        Maps to SLIRemittance interface. Ensure proper payload structure when linking to API.
+        This form maps to the GISUser interface. Ensure input names match API expectations when connecting the real backend.
       -->
       <form @submit.prevent="handleSubmit" class="modal-form">
         <div class="form-group">
-          <label for="remitEmpCode">Employee Code</label>
-          <input id="remitEmpCode" v-model="formData.empCode" type="text" pattern="[0-9]+" placeholder="e.g. 3571" required />
+          <label for="empCode">Employee Code</label>
+          <input id="empCode" v-model="formData.empCode" type="text" pattern="[0-9]+" placeholder="e.g. 3571" required />
         </div>
         
         <div class="form-group">
-          <label for="remitPolicyNumber">SLI Policy Number</label>
-          <input id="remitPolicyNumber" v-model="formData.sliPolicyNumber" type="text" placeholder="e.g. SLI-1234" required />
+          <label for="empName">Employee Name</label>
+          <input id="empName" v-model="formData.empName" type="text" placeholder="e.g. John Doe" required />
         </div>
         
         <div class="form-group">
-          <label for="salaryMonth">Salary Month</label>
-          <input id="salaryMonth" v-model="formData.salaryMonth" type="month" required />
+          <label for="gisPolicyNumber">GIS Policy Number</label>
+          <input id="gisPolicyNumber" v-model="formData.gisPolicyNumber" type="text" placeholder="e.g. GIS-1234" required />
         </div>
         
         <div class="form-group">
-          <label for="dueMonth">Due Month</label>
-          <input id="dueMonth" v-model="formData.dueMonth" type="month" required />
+          <label for="premium">Premium (Amount)</label>
+          <input id="premium" v-model="formData.premium" type="number" placeholder="0.00" required />
         </div>
         
         <div class="form-group">
-          <label for="amountDeducted">Amount Deducted</label>
-          <input id="amountDeducted" v-model="formData.amountDeducted" type="number" placeholder="0.00" required />
-        </div>
-        
-        <div class="form-group">
-          <label for="chequeId">Cheque ID (Optional)</label>
-          <input id="chequeId" v-model="formData.chequeId" type="text" placeholder="Optional" />
+          <label for="dateOfMaturity">Date of Maturity</label>
+          <input id="dateOfMaturity" v-model="formData.dateOfMaturity" type="date" required />
         </div>
         
         <div class="modal-actions">
           <button type="button" class="btn-cancel" @click="emit('close')">Cancel</button>
-          <button type="submit" class="btn-primary">Add Remittance</button>
+          <button type="submit" class="btn-primary">Add User</button>
         </div>
       </form>
     </div>
@@ -99,7 +99,6 @@ const handleSubmit = () => {
 </template>
 
 <style scoped>
-/* Common modal styles - in a real app, these could be extracted to a shared base modal component */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -121,10 +120,10 @@ const handleSubmit = () => {
   border-radius: 12px;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
   padding: 2rem;
-  animation: slideUp 0.3s ease-out;
+  animation: gisdeUp 0.3s ease-out;
 }
 
-@keyframes slideUp {
+@keyframes gisdeUp {
   from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
 }

@@ -1,22 +1,22 @@
 <script setup lang="ts">
 /**
- * SLIPage.vue
+ * GISPage.vue
  * -----------
- * Main container for the State Life Insurance (SLI) module.
+ * Main container for the State Life Insurance (GIS) module.
  * It integrates the search bar, the three action modals (Add, Remittance, Cheque),
  * and handles data display for a selected employee.
  */
 
 import { ref, computed } from 'vue'
-import { useSLIStore, type SLIUser } from '../store/useSLIStore'
+import { useGISStore, type GISUser } from '../store/useGISStore'
 import SearchBar, { type SearchBarItem } from '../../../components/searchBar/SearchBar.vue'
 
-// Import Modals for SLI Actions
-import SLIRemittanceModal from '../components/SLIRemittanceModal.vue'
-import SLIChequeModal from '../components/SLIChequeModal.vue'
-import SLIEditUserModal from '../components/SLIEditUserModal.vue'
+// Import Modals for GIS Actions
+import GISRemittanceModal from '../components/GISRemittanceModal.vue'
+import GISChequeModal from '../components/GISChequeModal.vue'
+import GISEditUserModal from '../components/GISEditUserModal.vue'
 
-const sliStore = useSLIStore()
+const gisStore = useGISStore()
 
 // --- MODAL STATE MANAGEMENT ---
 // These refs control the visibility of the different pop-up modals
@@ -25,7 +25,7 @@ const isChequeOpen = ref(false)
 const isEditUserOpen = ref(false)
 
 // Stores the specific user being edited when the Edit Modal is opened
-const userToEdit = ref<SLIUser | null>(null)
+const userToEdit = ref<GISUser | null>(null)
 
 // --- SEARCH & FILTER STATE ---
 // Tracks which employee is currently selected from the SearchBar
@@ -35,7 +35,7 @@ const selectedEmpCode = ref<string | null>(null)
 const searchItems = computed<SearchBarItem[]>(() => {
   // Deduplicate by empCode for the search bar so it only shows unique employees
   const uniqueEmps = new Map()
-  sliStore.users.forEach(user => {
+  gisStore.users.forEach(user => {
     const code = user.empCode.toUpperCase()
     if (!uniqueEmps.has(code)) {
       uniqueEmps.set(code, user)
@@ -64,7 +64,7 @@ const clearSelection = () => {
 const displayedUsers = computed(() => {
   if (selectedEmpCode.value) {
     const searchCode = selectedEmpCode.value.toUpperCase()
-    return sliStore.users.filter(u => u.empCode.toUpperCase() === searchCode)
+    return gisStore.users.filter(u => u.empCode.toUpperCase() === searchCode)
   }
   return [] // Empty array ensures tables don't render if no user is selected
 })
@@ -73,7 +73,7 @@ const displayedUsers = computed(() => {
 const selectedEmpName = computed(() => {
   if (!selectedEmpCode.value) return ''
   const searchCode = selectedEmpCode.value.toUpperCase()
-  const user = sliStore.users.find(u => u.empCode.toUpperCase() === searchCode)
+  const user = gisStore.users.find(u => u.empCode.toUpperCase() === searchCode)
   return user ? user.empName : ''
 })
 
@@ -81,7 +81,7 @@ const selectedEmpName = computed(() => {
 const displayedRemittances = computed(() => {
   if (selectedEmpCode.value) {
     const searchCode = selectedEmpCode.value.toUpperCase()
-    return sliStore.remittances.filter(r => r.empCode.toUpperCase() === searchCode)
+    return gisStore.remittances.filter(r => r.empCode.toUpperCase() === searchCode)
   }
   return []
 })
@@ -89,7 +89,7 @@ const displayedRemittances = computed(() => {
 // --- ACTIONS ---
 
 // Opens the edit modal and passes the selected policy data to it
-const openEditModal = (user: SLIUser) => {
+const openEditModal = (user: GISUser) => {
   userToEdit.value = user
   isEditUserOpen.value = true
 }
@@ -98,10 +98,10 @@ const openEditModal = (user: SLIUser) => {
  * Handles generating and downloading a CSV file for a specific policy.
  * It joins data across Policy -> Remittance -> Cheque.
  */
-const exportToCSV = (policy: SLIUser) => {
+const exportToCSV = (policy: GISUser) => {
   // 1. Fetch remittances specifically for this employee AND this policy number
-  const policyRemittances = sliStore.remittances.filter(
-    r => r.empCode.toUpperCase() === policy.empCode.toUpperCase() && r.sliPolicyNumber === policy.sliPolicyNumber
+  const policyRemittances = gisStore.remittances.filter(
+    r => r.empCode.toUpperCase() === policy.empCode.toUpperCase() && r.gisPolicyNumber === policy.gisPolicyNumber
   )
 
   if (policyRemittances.length === 0) {
@@ -116,7 +116,7 @@ const exportToCSV = (policy: SLIUser) => {
 
   policyRemittances.forEach(remit => {
     // Find matching cheque using chequeId -> receiptNoOrChequeNo
-    const cheque = sliStore.cheques.find(c => c.receiptNoOrChequeNo === remit.chequeId)
+    const cheque = gisStore.cheques.find(c => c.receiptNoOrChequeNo === remit.chequeId)
     
     rows.push([
       remit.dueMonth,
@@ -133,7 +133,7 @@ const exportToCSV = (policy: SLIUser) => {
   
   const link = document.createElement("a")
   link.setAttribute("href", encodedUri)
-  link.setAttribute("download", `SLI_Policy_${policy.sliPolicyNumber}.csv`)
+  link.setAttribute("download", `GIS_Policy_${policy.gisPolicyNumber}.csv`)
   
   // Required for Firefox
   document.body.appendChild(link)
@@ -143,12 +143,12 @@ const exportToCSV = (policy: SLIUser) => {
 </script>
 
 <template>
-  <section class="sli-page">
+  <section class="gis-page">
     <!-- 
       HEADER SECTION 
       Contains the SearchBar and the primary Action buttons.
     -->
-    <header class="sli-header">
+    <header class="gis-header">
       <div class="search-section">
         <SearchBar 
           :items="searchItems" 
@@ -174,7 +174,7 @@ const exportToCSV = (policy: SLIUser) => {
       MAIN CONTENT AREA (ACTIVE STATE)
       Only renders if an employee has been selected via the search bar.
     -->
-    <main v-if="selectedEmpCode" class="sli-content">
+    <main v-if="selectedEmpCode" class="gis-content">
       
       <!-- Common Employee Details Card: Shows Name and Code -->
       <div class="employee-header-card">
@@ -199,8 +199,8 @@ const exportToCSV = (policy: SLIUser) => {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="user in displayedUsers" :key="user.sliPolicyNumber">
-                <td><strong>{{ user.sliPolicyNumber }}</strong></td>
+              <tr v-for="user in displayedUsers" :key="user.gisPolicyNumber">
+                <td><strong>{{ user.gisPolicyNumber }}</strong></td>
                 <td>₹{{ user.premium }}</td>
                 <td>{{ user.dateOfMaturity }}</td>
                 <td class="actions-cell">
@@ -238,7 +238,7 @@ const exportToCSV = (policy: SLIUser) => {
             </thead>
             <tbody>
               <tr v-for="(remit, index) in displayedRemittances" :key="index">
-                <td><strong>{{ remit.sliPolicyNumber }}</strong></td>
+                <td><strong>{{ remit.gisPolicyNumber }}</strong></td>
                 <td>{{ remit.salaryMonth }}</td>
                 <td>{{ remit.dueMonth }}</td>
                 <td>₹{{ remit.amountDeducted }}</td>
@@ -257,24 +257,24 @@ const exportToCSV = (policy: SLIUser) => {
       MAIN CONTENT AREA (EMPTY STATE)
       Renders when NO employee is selected. Prompts user to search.
     -->
-    <main v-else class="sli-content empty-content">
+    <main v-else class="gis-content empty-content">
       <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="#cbd5e1" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
       <h2>Search for an Employee</h2>
-      <p>Use the search bar above to select an employee and view their SLI details.</p>
+      <p>Use the search bar above to select an employee and view their GIS details.</p>
     </main>
 
     <!-- 
       MODAL COMPONENTS 
       These are mounted but hidden until their respective 'isOpen' prop becomes true.
     -->
-    <SLIRemittanceModal :is-open="isRemittanceOpen" @close="isRemittanceOpen = false" />
-    <SLIChequeModal :is-open="isChequeOpen" @close="isChequeOpen = false" />
-    <SLIEditUserModal :is-open="isEditUserOpen" :user-to-edit="userToEdit" @close="isEditUserOpen = false" />
+    <GISRemittanceModal :is-open="isRemittanceOpen" @close="isRemittanceOpen = false" />
+    <GISChequeModal :is-open="isChequeOpen" @close="isChequeOpen = false" />
+    <GISEditUserModal :is-open="isEditUserOpen" :user-to-edit="userToEdit" @close="isEditUserOpen = false" />
   </section>
 </template>
 
 <style scoped>
-.sli-page {
+.gis-page {
   padding: 2rem;
   font-family: inherit;
   display: flex;
@@ -282,7 +282,7 @@ const exportToCSV = (policy: SLIUser) => {
   gap: 2rem;
 }
 
-.sli-header {
+.gis-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -356,7 +356,7 @@ const exportToCSV = (policy: SLIUser) => {
   background: #f8fafc;
 }
 
-.sli-content {
+.gis-content {
   background: #fff;
   border-radius: 12px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
@@ -508,7 +508,7 @@ const exportToCSV = (policy: SLIUser) => {
 }
 
 @media (max-width: 959px) {
-  .sli-header {
+  .gis-header {
     flex-direction: column;
     align-items: stretch;
   }

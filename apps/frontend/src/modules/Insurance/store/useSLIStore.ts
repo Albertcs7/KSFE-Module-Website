@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 
 /**
  * ============================================================================
@@ -41,14 +41,31 @@ export interface SLICheque {
 export const useSLIStore = defineStore('sli', () => {
   // --- MOCK DATABASE TABLES ---
   
-  const users = ref<SLIUser[]>([
-    { empCode: 'EMP001', empName: 'John Doe', sliPolicyNumber: 'SLI-1234', premium: 500, dateOfMaturity: '2030-12-31' },
-    { empCode: 'EMP002', empName: 'Jane Smith', sliPolicyNumber: 'SLI-5678', premium: 750, dateOfMaturity: '2035-06-15' },
+  let storedUsers = localStorage.getItem('sli_users')
+  
+  // Migration: Clear old database if it contains 'EMP' codes
+  if (storedUsers && storedUsers.includes('EMP')) {
+    localStorage.removeItem('sli_users')
+    localStorage.removeItem('sli_remittances')
+    localStorage.removeItem('sli_cheques')
+    storedUsers = null
+  }
+
+  const users = ref<SLIUser[]>(storedUsers ? JSON.parse(storedUsers) : [
+    { empCode: '3571', empName: 'John Doe', sliPolicyNumber: 'SLI-1234', premium: 500, dateOfMaturity: '2030-12-31' },
+    { empCode: '3572', empName: 'Jane Smith', sliPolicyNumber: 'SLI-5678', premium: 750, dateOfMaturity: '2035-06-15' },
   ])
 
-  const remittances = ref<SLIRemittance[]>([])
+  const storedRemittances = localStorage.getItem('sli_remittances')
+  const remittances = ref<SLIRemittance[]>(storedRemittances ? JSON.parse(storedRemittances) : [])
   
-  const cheques = ref<SLICheque[]>([])
+  const storedCheques = localStorage.getItem('sli_cheques')
+  const cheques = ref<SLICheque[]>(storedCheques ? JSON.parse(storedCheques) : [])
+
+  // --- LOCAL STORAGE PERSISTENCE ---
+  watch(users, (state) => localStorage.setItem('sli_users', JSON.stringify(state)), { deep: true })
+  watch(remittances, (state) => localStorage.setItem('sli_remittances', JSON.stringify(state)), { deep: true })
+  watch(cheques, (state) => localStorage.setItem('sli_cheques', JSON.stringify(state)), { deep: true })
 
   // --- ACTIONS (MOCK API CALLS) ---
 
