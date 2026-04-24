@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useGISStore, type GISUser } from '../store/useGISStore'
+import { useToast } from '../../../composables/useToast'
 
 const props = defineProps<{
   isOpen: boolean
@@ -11,6 +12,7 @@ const emit = defineEmits<{
 }>()
 
 const gisStore = useGISStore()
+const toast = useToast()
 
 // Form State
 const formData = ref<GISUser>({
@@ -24,14 +26,14 @@ const formData = ref<GISUser>({
 const handleSubmit = () => {
   // Validate basic data
   if (!formData.value.empCode || !formData.value.empName) {
-    alert("Please fill in required fields: Employee Code and Name.")
+    toast.error("Please fill in required fields: Employee Code and Name.")
     return
   }
   
   // Enforce 1 policy limit per person for GIS
   const existingPolicy = gisStore.users.find(u => u.empCode.toUpperCase() === formData.value.empCode.toUpperCase())
   if (existingPolicy) {
-    alert("This employee already has a GIS policy. Only one policy is allowed per person in GIS.")
+    toast.error("This employee already has a GIS policy. Only one policy is allowed per person in GIS.")
     return
   }
   
@@ -47,7 +49,7 @@ const handleSubmit = () => {
     dateOfMaturity: ''
   }
   emit('close')
-  alert("User added successfully!")
+  toast.success("User added successfully!")
 }
 </script>
 

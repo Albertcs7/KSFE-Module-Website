@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useSLIStore, type SLIUser } from '../store/useSLIStore'
+import { useToast } from '../../../composables/useToast'
 
 const props = defineProps<{
   isOpen: boolean
@@ -11,6 +12,7 @@ const emit = defineEmits<{
 }>()
 
 const sliStore = useSLIStore()
+const toast = useToast()
 
 // Form State
 const formData = ref<SLIUser>({
@@ -24,7 +26,7 @@ const formData = ref<SLIUser>({
 const handleSubmit = () => {
   // Validate basic data
   if (!formData.value.empCode || !formData.value.empName) {
-    alert("Please fill in required fields: Employee Code and Name.")
+    toast.error("Please fill in required fields: Employee Code and Name.")
     return
   }
   
@@ -40,7 +42,7 @@ const handleSubmit = () => {
     dateOfMaturity: ''
   }
   emit('close')
-  alert("User added successfully!")
+  toast.success("User added successfully!")
 }
 </script>
 

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useGISStore, type GISCheque } from '../store/useGISStore'
+import { useToast } from '../../../composables/useToast'
 
 const props = defineProps<{
   isOpen: boolean
@@ -11,6 +12,7 @@ const emit = defineEmits<{
 }>()
 
 const gisStore = useGISStore()
+const toast = useToast()
 
 // Form State
 const formData = ref<GISCheque>({
@@ -21,7 +23,7 @@ const formData = ref<GISCheque>({
 
 const handleSubmit = () => {
   if (!formData.value.encashmentDate || !formData.value.receiptNoOrChequeNo) {
-    alert("Please fill in required fields.")
+    toast.error("Please fill in required fields.")
     return
   }
   
@@ -35,7 +37,7 @@ const handleSubmit = () => {
     salaryMonth: ''
   }
   emit('close')
-  alert("Cheque Details added successfully!")
+  toast.success("Cheque Details added successfully!")
 }
 </script>
 
@@ -43,7 +45,7 @@ const handleSubmit = () => {
   <div v-if="isOpen" class="modal-overlay" @click.self="emit('close')">
     <div class="modal-content">
       <div class="modal-header">
-        <h2>Cheque Details</h2>
+        <h2>Add Cheque Details</h2>
         <button class="close-btn" @click="emit('close')">&times;</button>
       </div>
       

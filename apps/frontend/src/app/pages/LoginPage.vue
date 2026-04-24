@@ -26,6 +26,7 @@ const handleLogin = async () => {
   
   if (isNumeric) {
     // Navigate to dashboard
+    localStorage.setItem('isAuthenticated', 'true')
     router.push('/')
   } else {
     errorMsg.value = 'Invalid Employee Code. Must contain only numbers.'
@@ -92,7 +93,7 @@ const handleLogin = async () => {
             
             <button type="submit" class="btn-submit" :disabled="isLoading">
               <span v-if="isLoading" class="spinner"></span>
-              <span v-else>Access Dashboard</span>
+              <span v-else>Login</span>
             </button>
           </form>
         </div>

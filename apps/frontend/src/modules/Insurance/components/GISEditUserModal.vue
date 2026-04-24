@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { useGISStore, type GISUser } from '../store/useGISStore'
+import { useToast } from '../../../composables/useToast'
 
 const props = defineProps<{
   isOpen: boolean
@@ -12,6 +13,7 @@ const emit = defineEmits<{
 }>()
 
 const gisStore = useGISStore()
+const toast = useToast()
 
 // Form State
 const formData = ref<GISUser>({
@@ -31,13 +33,13 @@ watch(() => props.isOpen, (newVal) => {
 
 const handleSubmit = () => {
   if (!formData.value.empCode || !formData.value.empName) {
-    alert("Please fill in required fields: Employee Code and Name.")
+    toast.error("Please fill in required fields: Employee Code and Name.")
     return
   }
   
   gisStore.updateUser({ ...formData.value })
   emit('close')
-  alert("User details updated successfully!")
+  toast.success("User details updated successfully!")
 }
 </script>
 

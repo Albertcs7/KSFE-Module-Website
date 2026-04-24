@@ -2,9 +2,13 @@
 import { ref } from 'vue'
 import { useSLIStore } from '../store/useSLIStore'
 import { useGISStore } from '../store/useGISStore'
+import { useToast } from '../../../composables/useToast'
+import { useRouter } from 'vue-router'
 
 const sliStore = useSLIStore()
 const gisStore = useGISStore()
+const toast = useToast()
+const router = useRouter()
 
 const type = ref<'SLI' | 'GIS'>('SLI')
 
@@ -33,7 +37,7 @@ const removeSliPolicyField = (index: number) => {
 
 const handleSubmit = () => {
   if (!empCode.value || !empName.value) {
-    alert("Employee Code and Name are required.")
+    toast.error("Employee Code and Name are required.")
     return
   }
 
@@ -41,14 +45,14 @@ const handleSubmit = () => {
 
   if (type.value === 'GIS') {
     if (!gisPolicy.value.policyNumber || gisPolicy.value.premium === '' || !gisPolicy.value.dateOfMaturity) {
-      alert("Please fill in all GIS policy details.")
+      toast.error("Please fill in all GIS policy details.")
       return
     }
     
     // Check if GIS policy already exists for this person
     const existing = gisStore.users.find(u => u.empCode.toUpperCase() === code)
     if (existing) {
-      alert("This employee already has a GIS policy. Only one policy is allowed per person in GIS.")
+      toast.error("This employee already has a GIS policy. Only one policy is allowed per person in GIS.")
       return
     }
     
@@ -59,8 +63,7 @@ const handleSubmit = () => {
       premium: Number(gisPolicy.value.premium),
       dateOfMaturity: gisPolicy.value.dateOfMaturity
     })
-    
-    alert("GIS User enrolled successfully!")
+    toast.success("GIS User enrolled successfully!")
     gisPolicy.value = { policyNumber: '', premium: '', dateOfMaturity: '' }
     
   } else {
@@ -68,14 +71,14 @@ const handleSubmit = () => {
     // Filter out completely empty policies
     const validPolicies = sliPolicies.value.filter(p => p.policyNumber.trim() !== '')
     if (validPolicies.length === 0) {
-      alert("Please enter at least one SLI policy.")
+      toast.error("Please enter at least one SLI policy.")
       return
     }
     
     // Check if any required field is missing in the valid policies
     const isInvalid = validPolicies.some(p => p.premium === '' || !p.dateOfMaturity)
     if (isInvalid) {
-      alert("Please fill in all fields (Premium, Maturity Date) for the entered policies.")
+      toast.error("Please fill in all fields (Premium, Maturity Date) for the entered policies.")
       return
     }
 
@@ -89,7 +92,7 @@ const handleSubmit = () => {
       })
     })
 
-    alert(`Successfully enrolled user with ${validPolicies.length} SLI policies!`)
+    toast.success(`Successfully enrolled user with ${validPolicies.length} SLI policies!`)
     sliPolicies.value = [{ policyNumber: '', premium: '', dateOfMaturity: '' }]
   }
 

@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { useSLIStore, type SLIUser } from '../store/useSLIStore'
+import { useToast } from '../../../composables/useToast'
+
+const toast = useToast()
 
 const props = defineProps<{
   isOpen: boolean
@@ -31,13 +34,13 @@ watch(() => props.isOpen, (newVal) => {
 
 const handleSubmit = () => {
   if (!formData.value.empCode || !formData.value.empName) {
-    alert("Please fill in required fields: Employee Code and Name.")
+    toast.error("Please fill in required fields: Employee Code and Name.")
     return
   }
   
   sliStore.updateUser({ ...formData.value })
   emit('close')
-  alert("User details updated successfully!")
+  toast.success("User details updated successfully!")
 }
 </script>
 

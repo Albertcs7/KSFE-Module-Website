@@ -67,6 +67,7 @@ const handleMenuClick = (): void => {
 };
 
 const handleLogout = (): void => {
+  localStorage.removeItem('isAuthenticated');
   router.push('/login');
   if (props.isMobile) {
     emit("close-mobile");

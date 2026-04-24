@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useSLIStore, type SLIRemittance } from '../store/useSLIStore'
+import { useToast } from '../../../composables/useToast'
 
 const props = defineProps<{
   isOpen: boolean
@@ -11,6 +12,7 @@ const emit = defineEmits<{
 }>()
 
 const sliStore = useSLIStore()
+const toast = useToast()
 
 // Form State
 const formData = ref<SLIRemittance>({
@@ -25,7 +27,7 @@ const formData = ref<SLIRemittance>({
 const handleSubmit = () => {
   // Validate basic data
   if (!formData.value.empCode || !formData.value.sliPolicyNumber || !formData.value.salaryMonth) {
-    alert("Please fill in required fields: Employee Code, Policy Number, and Salary Month.")
+    toast.error("Please fill in required fields: Employee Code, Policy Number, and Salary Month.")
     return
   }
   
@@ -42,7 +44,7 @@ const handleSubmit = () => {
     chequeId: ''
   }
   emit('close')
-  alert("Remittance added successfully!")
+  toast.success("Remittance added successfully!")
 }
 </script>
 
@@ -50,7 +52,7 @@ const handleSubmit = () => {
   <div v-if="isOpen" class="modal-overlay" @click.self="emit('close')">
     <div class="modal-content">
       <div class="modal-header">
-        <h2>Monthly Remittance</h2>
+        <h2>Add Monthly Remittance</h2>
         <button class="close-btn" @click="emit('close')">&times;</button>
       </div>
       
