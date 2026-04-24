@@ -17,6 +17,7 @@ import SLIRemittanceModal from '../components/SLIRemittanceModal.vue'
 import SLIChequeModal from '../components/SLIChequeModal.vue'
 import SLIEditUserModal from '../components/SLIEditUserModal.vue'
 import SLIAddUserModal from '../components/SLIAddUserModal.vue'
+import ExportReportModal from '../components/ExportReportModal.vue'
 
 const sliStore = useSLIStore()
 const toast = useToast()
@@ -27,6 +28,10 @@ const isRemittanceOpen = ref(false)
 const isChequeOpen = ref(false)
 const isEditUserOpen = ref(false)
 const isAddSLIOpen = ref(false)
+const isExportOpen = ref(false)
+
+// Tracks which policy row the Print button was clicked on
+const policyForExport = ref<SLIUser | null>(null)
 
 // Stores the specific user being edited when the Edit Modal is opened
 const userToEdit = ref<SLIUser | null>(null)
@@ -106,50 +111,11 @@ const openEditModal = (user: SLIUser) => {
 }
 
 /**
- * Handles generating and downloading a CSV file for a specific policy.
- * It joins data across Policy -> Remittance -> Cheque.
+ * Opens the ExportReportModal for a specific policy row.
  */
-const exportToCSV = (policy: SLIUser) => {
-  // 1. Fetch remittances specifically for this employee AND this policy number
-  const policyRemittances = sliStore.remittances.filter(
-    r => r.empCode.toUpperCase() === policy.empCode.toUpperCase() && r.sliPolicyNumber === policy.sliPolicyNumber
-  )
-
-  if (policyRemittances.length === 0) {
-    alert("No remittance data found for this policy to export.")
-    return
-  }
-
-  // 2. Build rows
-  const rows = [
-    ['Due Month', 'Amount Deducted', 'Salary Month', 'Date of Encashment', 'Receipt No/Cheque No']
-  ]
-
-  policyRemittances.forEach(remit => {
-    // Find matching cheque using chequeId -> receiptNoOrChequeNo
-    const cheque = sliStore.cheques.find(c => c.receiptNoOrChequeNo === remit.chequeId)
-    
-    rows.push([
-      remit.dueMonth,
-      remit.amountDeducted.toString(),
-      remit.salaryMonth,
-      cheque ? cheque.encashmentDate : 'N/A',
-      cheque ? cheque.receiptNoOrChequeNo : 'N/A'
-    ])
-  })
-
-  // 3. Generate CSV
-  const csvContent = "data:text/csv;charset=utf-8," + rows.map(e => e.join(",")).join("\n")
-  const encodedUri = encodeURI(csvContent)
-  
-  const link = document.createElement("a")
-  link.setAttribute("href", encodedUri)
-  link.setAttribute("download", `SLI_Policy_${policy.sliPolicyNumber}.csv`)
-  
-  // Required for Firefox
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
+const openPrintModal = (policy: SLIUser) => {
+  policyForExport.value = policy
+  isExportOpen.value = true
 }
 
 // --- CSV UPLOAD LOGIC ---
@@ -261,9 +227,9 @@ const handleFileUpload = (event: Event) => {
                     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                     Edit
                   </button>
-                  <button class="btn-sm btn-print" @click="exportToCSV(user)" title="Print/Export to CSV">
+                  <button class="btn-sm btn-print" @click="openPrintModal(user)" title="Print / Export">
                     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
-                    Print CSV
+                    Print
                   </button>
                 </td>
               </tr>
@@ -324,6 +290,15 @@ const handleFileUpload = (event: Event) => {
     <SLIRemittanceModal :is-open="isRemittanceOpen" @close="isRemittanceOpen = false" />
     <SLIChequeModal :is-open="isChequeOpen" @close="isChequeOpen = false" />
     <SLIEditUserModal :is-open="isEditUserOpen" :user-to-edit="userToEdit" @close="isEditUserOpen = false" />
+    <ExportReportModal
+      v-if="policyForExport"
+      :is-open="isExportOpen"
+      module-type="SLI"
+      :emp-code="policyForExport.empCode"
+      :emp-name="policyForExport.empName"
+      :policy-number="policyForExport.sliPolicyNumber"
+      @close="isExportOpen = false; policyForExport = null"
+    />
   </section>
 </template>
 
@@ -426,6 +401,7 @@ const handleFileUpload = (event: Event) => {
   border-radius: 10px;
   margin-bottom: 2rem;
   border: 1px solid #e2e8f0;
+  justify-content: space-between;
 }
 
 .emp-avatar {
@@ -455,6 +431,29 @@ const handleFileUpload = (event: Event) => {
 
 .emp-info strong {
   color: #1d3a6d;
+}
+
+.btn-export {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 1rem;
+  background: #1d3a6d;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.15s;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.btn-export:hover {
+  background: #152b52;
+  transform: translateY(-1px);
 }
 
 .empty-content {

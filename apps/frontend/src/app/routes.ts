@@ -6,6 +6,7 @@ import InsuranceOptionPage from '../modules/Insurance/pages/InsuranceOptionPage.
 import SLIPage from '../modules/Insurance/pages/SLIPage.vue'
 import GISPage from '../modules/Insurance/pages/GISPage.vue'
 import AddUserPage from '../modules/Insurance/pages/AddUserPage.vue'
+import MonthlyReportPage from '../modules/Insurance/pages/MonthlyReportPage.vue'
 import LoginPage from './pages/LoginPage.vue'
 
 export const appRoutes: RouteRecordRaw[] = [
@@ -41,6 +42,11 @@ export const appRoutes: RouteRecordRaw[] = [
       path:'enroll',
       name:'insurance-enroll',
       component:AddUserPage,
+     },
+     {
+      path:'monthly-report',
+      name:'insurance-monthly-report',
+      component:MonthlyReportPage,
      },
      {
       path:':optionId',

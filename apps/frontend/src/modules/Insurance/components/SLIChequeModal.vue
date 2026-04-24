@@ -23,7 +23,7 @@ const formData = ref<SLICheque>({
 
 const handleSubmit = () => {
   if (!formData.value.encashmentDate || !formData.value.receiptNoOrChequeNo) {
-    alert("Please fill in required fields.")
+    toast.error("Please fill in required fields.")
     return
   }
   
@@ -37,7 +37,7 @@ const handleSubmit = () => {
     salaryMonth: ''
   }
   emit('close')
-  alert("Cheque Details added successfully!")
+  toast.success("Cheque Details added successfully!")
 }
 </script>
 

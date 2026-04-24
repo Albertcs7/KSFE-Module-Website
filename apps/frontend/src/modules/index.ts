@@ -13,8 +13,7 @@ const VISIBLE_MODULES: VisibleModule[] = [
     children: [
       { label: 'SLI', path: '/insurance/sli' },
       { label: 'GIS', path: '/insurance/gis' },
-      { label: 'Option 4', path: '/insurance/option4' },
-      { label: 'Option 5', path: '/insurance/option5' },
+      { label: 'Monthly Report', path: '/insurance/monthly-report' },
     ]
   }
 ]
