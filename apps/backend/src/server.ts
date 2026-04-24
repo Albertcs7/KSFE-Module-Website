@@ -1,13 +1,9 @@
-import http, { IncomingMessage, ServerResponse } from 'http'
+import { createApp } from "./app"
 
-const server = http.createServer((req: IncomingMessage, res: ServerResponse) => {
-  res.statusCode = 200
-  res.setHeader('Content-Type', 'application/json')
-  res.end(JSON.stringify({ message: 'Backend is working 🚀' }))
-})
+const PORT = process.env.PORT || 5000
 
-const PORT = 3000
+const server = createApp();
 
-server.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`)
-})
+server.listen(PORT,()=>{
+  console.log(`Server is running on port ${PORT}`)
+});
