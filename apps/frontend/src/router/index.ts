@@ -6,4 +6,13 @@ const router = createRouter({
   routes: appRoutes,
 })
 
+router.beforeEach((to, from, next) => {
+  const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true'
+  if (to.path !== '/login' && !isAuthenticated) {
+    next('/login')
+  } else {
+    next()
+  }
+})
+
 export default router

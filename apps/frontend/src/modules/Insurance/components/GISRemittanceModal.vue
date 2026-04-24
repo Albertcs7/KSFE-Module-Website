@@ -50,7 +50,7 @@ const handleSubmit = () => {
   <div v-if="isOpen" class="modal-overlay" @click.self="emit('close')">
     <div class="modal-content">
       <div class="modal-header">
-        <h2>Monthly Remittance</h2>
+        <h2>Add Monthly Remittance</h2>
         <button class="close-btn" @click="emit('close')">&times;</button>
       </div>
       

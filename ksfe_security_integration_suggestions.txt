@@ -1,0 +1,66 @@
+KSFE Insurance Dashboard - Security & Integration Roadmap
+========================================================
+
+As we transition from a frontend-only prototype to a full-stack production application, it is crucial to plan for advanced security and seamless integration. Here are architectural recommendations to make the KSFE Hub robust, secure, and easily maintainable.
+
+---
+
+1. ADVANCED SECURITY MEASURES
+-----------------------------
+
+A. Secure Authentication Handling (JWT)
+   - Current State: We mock the login or pass `token: true` loosely.
+   - Upgrade: When the backend issues a JSON Web Token (JWT) after a successful login, DO NOT store it in `localStorage` (as it is vulnerable to XSS attacks). 
+   - Recommendation: Store the token in a secure, HTTP-only, `SameSite=Strict` cookie managed by the backend. This prevents malicious scripts from reading the token.
+
+B. Role-Based Access Control (RBAC)
+   - Current State: Anyone who visits the URL can see the dashboard.
+   - Upgrade: Implement Vue Router "Navigation Guards". The router should check if the user has an active session and the specific "Admin" role before allowing access to `/insurance`. If unauthorized, redirect them immediately to `/login`.
+
+C. Session Management & Timeout
+   - Implement an "Idle Timeout". If an admin steps away from their desk for 15 minutes, automatically log them out.
+   - Ensure the backend invalidates tokens upon logout (Token Blacklisting) to prevent replay attacks.
+
+D. Rate Limiting & Brute Force Protection
+   - The `https://stagemobileapi.ksfeonline.com/admin/login` endpoint MUST have rate limiting (e.g., maximum 5 failed attempts per minute) to prevent hackers from guessing numeric employee codes and passwords.
+
+E. Data Sanitization & CSRF
+   - Always sanitize inputs on the backend to prevent SQL Injection.
+   - Implement CSRF (Cross-Site Request Forgery) protection to ensure that requests hitting the API genuinely originated from your Vue frontend.
+
+---
+
+2. SEAMLESS FRONTEND-BACKEND INTEGRATION
+----------------------------------------
+
+A. Centralized API Client (Axios Interceptors)
+   - Current State: We used `fetch()` directly inside components.
+   - Upgrade: Use `Axios` and configure an "Interceptor". This will automatically:
+     1. Attach the authentication token to every single outbound request.
+     2. Catch global errors (like a `401 Unauthorized` if the session expires) and automatically redirect the user to the login page without writing duplicate code in every component.
+
+B. Replacing Local Storage with Real-time Pinia Sync
+   - Current State: `useSLIStore` relies on the browser's local storage.
+   - Upgrade: Swap out the `localStorage` logic for actual API calls (`GET /api/users`, `POST /api/remittances`).
+   - For a seamless experience, use Optimistic UI Updates: when a user adds a policy, immediately show it in the UI while the API request finishes in the background. If the API fails, roll back the UI and show an error toast.
+
+C. Global Notification / Toast System
+   - Instead of basic browser `alert()` popups, integrate a sleek Toast Notification system (e.g., Vue Toastification).
+   - This provides seamless, non-intrusive feedback when data is saved successfully or when a network error occurs.
+
+D. Unified Schema Validation
+   - Implement a validation library like `Zod` or `Yup` on the frontend.
+   - Ensure the frontend validation perfectly matches the backend database rules (e.g., max lengths, exact numeric patterns, required fields). This prevents unnecessary API calls that are destined to fail.
+
+---
+
+3. FUTURE-PROOFING & DATA INTEGRITY
+-----------------------------------
+
+A. Audit Trails
+   - For financial and insurance data, accountability is key. The backend should track the ID of the admin who added or edited a policy. 
+   - The frontend can eventually feature a "History" or "Logs" tab so supervisors can see who made what changes.
+
+B. Backend Pagination & Server-side Filtering
+   - As the KSFE employee database grows, loading all users at once will crash the browser.
+   - Update the `<SearchBar>` to send the search query directly to the backend (`GET /api/employees?search=3571`) and only return the top 10 results, keeping the frontend lightning fast.

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useSLIStore, type SLICheque } from '../store/useSLIStore'
+import { useToast } from '../../../composables/useToast'
 
 const props = defineProps<{
   isOpen: boolean
@@ -11,6 +12,7 @@ const emit = defineEmits<{
 }>()
 
 const sliStore = useSLIStore()
+const toast = useToast()
 
 // Form State
 const formData = ref<SLICheque>({
@@ -43,7 +45,7 @@ const handleSubmit = () => {
   <div v-if="isOpen" class="modal-overlay" @click.self="emit('close')">
     <div class="modal-content">
       <div class="modal-header">
-        <h2>Cheque Details</h2>
+        <h2>Add Cheque Details</h2>
         <button class="close-btn" @click="emit('close')">&times;</button>
       </div>
       

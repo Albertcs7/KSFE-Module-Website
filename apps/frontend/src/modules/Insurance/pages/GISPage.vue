@@ -10,19 +10,23 @@
 import { ref, computed } from 'vue'
 import { useGISStore, type GISUser } from '../store/useGISStore'
 import SearchBar, { type SearchBarItem } from '../../../components/searchBar/SearchBar.vue'
+import { useToast } from '../../../composables/useToast'
 
 // Import Modals for GIS Actions
 import GISRemittanceModal from '../components/GISRemittanceModal.vue'
 import GISChequeModal from '../components/GISChequeModal.vue'
 import GISEditUserModal from '../components/GISEditUserModal.vue'
+import GISAddUserModal from '../components/GISAddUserModal.vue'
 
 const gisStore = useGISStore()
+const toast = useToast()
 
 // --- MODAL STATE MANAGEMENT ---
 // These refs control the visibility of the different pop-up modals
 const isRemittanceOpen = ref(false)
 const isChequeOpen = ref(false)
 const isEditUserOpen = ref(false)
+const isAddGISOpen = ref(false)
 
 // Stores the specific user being edited when the Edit Modal is opened
 const userToEdit = ref<GISUser | null>(null)
@@ -64,7 +68,14 @@ const clearSelection = () => {
 const displayedUsers = computed(() => {
   if (selectedEmpCode.value) {
     const searchCode = selectedEmpCode.value.toUpperCase()
-    return gisStore.users.filter(u => u.empCode.toUpperCase() === searchCode)
+    const userPolicies = gisStore.users.filter(u => u.empCode.toUpperCase() === searchCode)
+    
+    // Deduplicate by policy number to ensure uniqueness
+    const uniquePolicies = new Map<string, GISUser>()
+    userPolicies.forEach(policy => {
+      uniquePolicies.set(policy.gisPolicyNumber.toUpperCase(), policy)
+    })
+    return Array.from(uniquePolicies.values())
   }
   return [] // Empty array ensures tables don't render if no user is selected
 })
@@ -75,6 +86,13 @@ const selectedEmpName = computed(() => {
   const searchCode = selectedEmpCode.value.toUpperCase()
   const user = gisStore.users.find(u => u.empCode.toUpperCase() === searchCode)
   return user ? user.empName : ''
+})
+
+// Checks if the selected employee already has a GIS policy (only one allowed)
+const hasGISPolicy = computed(() => {
+  if (!selectedEmpCode.value) return false
+  const searchCode = selectedEmpCode.value.toUpperCase()
+  return gisStore.users.some(u => u.empCode.toUpperCase() === searchCode)
 })
 
 // Filters remittances to only show those matching the selected Employee Code
@@ -140,6 +158,39 @@ const exportToCSV = (policy: GISUser) => {
   link.click()
   document.body.removeChild(link)
 }
+
+// --- CSV UPLOAD LOGIC ---
+const handleFileUpload = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (!file) return
+
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    const text = e.target?.result as string
+    if (text) {
+      const lines = text.split('\n').filter(line => line.trim())
+      let count = 0
+      lines.forEach((line, index) => {
+        if (index === 0 && line.toLowerCase().includes('emp')) return // Skip header
+        const parts = line.split(',')
+        if (parts.length >= 5) {
+          gisStore.users.push({
+             empCode: parts[0]?.trim() || '',
+             empName: parts[1]?.trim() || '',
+             gisPolicyNumber: parts[2]?.trim() || '',
+             premium: Number(parts[3]) || 0,
+             dateOfMaturity: parts[4]?.trim() || ''
+          })
+          count++
+        }
+      })
+      toast.success(`Successfully imported ${count} GIS policies from CSV!`)
+    }
+  }
+  reader.readAsText(file)
+  target.value = ''
+}
 </script>
 
 <template>
@@ -159,13 +210,22 @@ const exportToCSV = (policy: GISUser) => {
       </div>
       
       <div class="action-buttons">
+        <label class="btn-action secondary" style="cursor: pointer;" title="Upload Old Data via CSV">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+          Upload CSV
+          <input type="file" accept=".csv" @change="handleFileUpload" style="display: none;" />
+        </label>
+        <button class="btn-action primary" @click="isAddGISOpen = true" :disabled="hasGISPolicy">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"></path></svg>
+          Add GIS Policy
+        </button>
         <button class="btn-action secondary" @click="isRemittanceOpen = true">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line></svg>
-          Monthly Remittance
+          Add Monthly Remittance
         </button>
         <button class="btn-action secondary" @click="isChequeOpen = true">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-          Cheque Details
+          Add Cheque Details
         </button>
       </div>
     </header>
@@ -267,6 +327,7 @@ const exportToCSV = (policy: GISUser) => {
       MODAL COMPONENTS 
       These are mounted but hidden until their respective 'isOpen' prop becomes true.
     -->
+    <GISAddUserModal :is-open="isAddGISOpen" @close="isAddGISOpen = false" />
     <GISRemittanceModal :is-open="isRemittanceOpen" @close="isRemittanceOpen = false" />
     <GISChequeModal :is-open="isChequeOpen" @close="isChequeOpen = false" />
     <GISEditUserModal :is-open="isEditUserOpen" :user-to-edit="userToEdit" @close="isEditUserOpen = false" />

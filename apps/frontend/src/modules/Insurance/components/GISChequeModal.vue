@@ -43,7 +43,7 @@ const handleSubmit = () => {
   <div v-if="isOpen" class="modal-overlay" @click.self="emit('close')">
     <div class="modal-content">
       <div class="modal-header">
-        <h2>Cheque Details</h2>
+        <h2>Add Cheque Details</h2>
         <button class="close-btn" @click="emit('close')">&times;</button>
       </div>
       
