@@ -1,6 +1,9 @@
-import { defineStore } from "pinia";
-import type { AuthUserData } from "@/services/types/auth.types";
 import { loginApi, type LoginPayload } from "@/services/api/auth.api";
+import type {
+  AuthUserData,
+  BackendLoginData,
+} from "@/services/types/auth.types";
+import { defineStore } from "pinia";
 
 interface AuthState {
   user: AuthUserData | null;
@@ -8,9 +11,44 @@ interface AuthState {
   loading: boolean;
 }
 
+const getStoredUser = (): AuthUserData | null => {
+  const raw = localStorage.getItem("auth_user");
+  if (!raw) return null;
+
+  try {
+    return JSON.parse(raw) as AuthUserData;
+  } catch {
+    return null;
+  }
+};
+
+const normalizeBackendUser = (data: BackendLoginData): AuthUserData => ({
+  role: {
+    name: data.role,
+    permissions: data.permissions.map((name, index) => ({
+      name,
+      isDeleted: false,
+      id: `perm-${index}`,
+    })),
+    isDeleted: false,
+    modules: data.modules,
+    id: "role-0",
+  },
+  roleName: data.role,
+  employee_id: data.employeeId,
+  first_name: data.user.name,
+  designation: data.designation,
+  mobile: "",
+  branchId: data.branchId,
+  regionalBranches: [],
+  branch_name: "",
+  userId: data.user.id,
+  token: data.token,
+});
+
 export const useAuthStore = defineStore("auth", {
   state: (): AuthState => ({
-    user: null,
+    user: getStoredUser(),
     token: localStorage.getItem("token"),
     loading: false
   }),
@@ -39,14 +77,17 @@ export const useAuthStore = defineStore("auth", {
           throw new Error(res.message);
         }
 
+        const normalizedUser = normalizeBackendUser(res.data);
+
         // store user
-        this.user = res.data;
+        this.user = normalizedUser;
 
         // store token
         this.token = res.data.token;
 
         // persist token
         localStorage.setItem("token", res.data.token);
+        localStorage.setItem("auth_user", JSON.stringify(normalizedUser));
 
       } finally {
         this.loading = false;
@@ -58,6 +99,8 @@ export const useAuthStore = defineStore("auth", {
       this.token = null;
 
       localStorage.removeItem("token");
+      localStorage.removeItem("auth_user");
+      localStorage.removeItem("isAuthenticated");
     }
   }
 });

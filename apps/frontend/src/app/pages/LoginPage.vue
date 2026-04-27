@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import { useAuthStore } from '@/store/auth.store'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
+const authStore = useAuthStore()
 const empCode = ref('')
 const password = ref('')
 const errorMsg = ref('')
@@ -18,21 +20,19 @@ const handleLogin = async () => {
 
   isLoading.value = true
 
-  // Simulate API call delay
-  await new Promise(resolve => setTimeout(resolve, 800))
+  try {
+    await authStore.login({
+      UID: empCode.value,
+      password: password.value,
+      token: true,
+    })
 
-  // For demonstration, allow any non-empty password but ensure Employee Code is purely numeric
-  const isNumeric = /^\d+$/.test(empCode.value)
-  
-  if (isNumeric) {
-    // Navigate to dashboard
-    localStorage.setItem('isAuthenticated', 'true')
-    router.push('/')
-  } else {
-    errorMsg.value = 'Invalid Employee Code. Must contain only numbers.'
+    router.push('/insurance')
+  } catch (error: any) {
+    errorMsg.value = error?.message || 'Login failed'
+  } finally {
+    isLoading.value = false
   }
-  
-  isLoading.value = false
 }
 </script>
 

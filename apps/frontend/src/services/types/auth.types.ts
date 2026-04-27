@@ -26,8 +26,22 @@ export interface AuthUserData {
   token: string;
 }
 
-export interface LoginApiResponse {
+export interface BackendLoginData {
+  token: string;
+  user: {
+    id: string;
+    name: string;
+  };
+  role: string;
+  designation: string;
+  branchId: number | null;
+  employeeId: string;
+  permissions: string[];
+  modules: string[];
+}
+
+export interface BackendLoginResponse {
   status: boolean;
   message: string;
-  data: AuthUserData;
+  data: BackendLoginData;
 }

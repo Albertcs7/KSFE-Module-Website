@@ -2,6 +2,7 @@
 import { computed, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { getVisibleModules } from "../../modules";
+import { useAuthStore } from "../../store/auth.store";
 
 interface SidebarProps {
   collapsed?: boolean;
@@ -28,6 +29,7 @@ const emit = defineEmits<{
 
 const route = useRoute();
 const router = useRouter();
+const authStore = useAuthStore();
 
 // Only show modules the current user has access to.
 // Reactive — updates automatically when auth state changes.
@@ -67,7 +69,7 @@ const handleMenuClick = (): void => {
 };
 
 const handleLogout = (): void => {
-  localStorage.removeItem('isAuthenticated');
+  authStore.logout();
   router.push('/login');
   if (props.isMobile) {
     emit("close-mobile");

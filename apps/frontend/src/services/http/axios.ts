@@ -2,20 +2,21 @@ import axios from "axios";
 
 const axiosInstance = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
-  timeout: 10000,
+  timeout: 15000,
   headers: {
     "Content-Type": "application/json"
   }
 });
 
-// REQUEST INTERCEPTOR (future: attach token)
+// REQUEST INTERCEPTOR
 axiosInstance.interceptors.request.use(
   (config) => {
-    // Example (we’ll use later):
-    // const token = localStorage.getItem("token");
-    // if (token) {
-    //   config.headers.Authorization = `Bearer ${token}`;
-    // }
+    const token = localStorage.getItem("token");
+
+    if (token) {
+      config.headers = config.headers ?? {};
+      config.headers.Authorization = `Bearer ${token}`;
+    }
 
     return config;
   },

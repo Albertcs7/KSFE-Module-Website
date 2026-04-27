@@ -1,5 +1,5 @@
 import axiosInstance from "../http/axios";
-import type { LoginApiResponse } from "../types/auth.types";
+import type { BackendLoginResponse } from "../types/auth.types";
 
 export interface LoginPayload {
   UID: string;
@@ -12,9 +12,9 @@ export interface LoginPayload {
  */
 export const loginApi = async (
     payload: LoginPayload): 
-    Promise<LoginApiResponse> => {
-  const response = await axiosInstance.post<LoginApiResponse>(
-    "/admin/login",
+    Promise<BackendLoginResponse> => {
+  const response = await axiosInstance.post<BackendLoginResponse>(
+    "/auth/login",
     payload
   );
 
