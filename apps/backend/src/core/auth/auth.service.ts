@@ -5,6 +5,10 @@ import { LoginApiResponse } from "../../integrations/external-auth/externalAuth.
 
 const JWT_SECRET = "your_secret_key"; // move to .env later
 
+const forcedModules = ["insuranceModule"]
+
+const forcedPermissions = [""]
+
 export const loginService = async (
   data: loginBody
 ): Promise<any> => {
@@ -29,8 +33,8 @@ export const loginService = async (
         employeeId: user.employee_id,
         branchId: user.branchId,
         designation: user.designation,
-        permissions: permissionNames,
-        modules: user.role.modules, 
+        permissions: forcedPermissions, //permissionNames
+        modules: forcedModules,  //user.role.modules (use this when modules are added to the api)
       },
       JWT_SECRET,
       { expiresIn: "1h" }
@@ -53,8 +57,8 @@ export const loginService = async (
         branchId: user.branchId,
         employeeId: user.employee_id,
 
-        permissions: permissionNames,
-        modules: user.role.modules,
+        permissions: forcedPermissions, //permissionNames
+        modules: forcedModules, //user.role.modules (use this when modules are added to the api)
       },
     };
   } catch (error: any) {
