@@ -19,8 +19,8 @@ export interface AuthUserData {
   first_name: string;
   designation: string;
   mobile: string;
-  branchId: number | null; // safer
-  regionalBranches: unknown[]; // safer
+  branchId: number | null;
+  regionalBranches: any[]; // ⚠️ kept EXACTLY as backend (no assumptions)
   branch_name: string;
   userId: string;
   token: string;

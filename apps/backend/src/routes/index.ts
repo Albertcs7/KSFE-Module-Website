@@ -17,5 +17,24 @@ export const router = (req:IncomingMessage,res:ServerResponse)=>{
 
   res.writeHead(404);
   return res.end(JSON.stringify({ message: "Route not found" }));
-
 }
+
+
+//for autehication and autharisation use this
+/*
+import { authenticate, authorize } from "../../core/auth/auth.middleware";
+import { runMiddlewares } from "../../core/http/middlewareRunner";
+
+if (req.url === "/policies" && req.method === "GET") {
+
+  const ok = runMiddlewares(req, res, [
+    authenticate,
+    authorize("viewPolicies"),
+  ]);
+
+  if (!ok) return;
+
+  // Clean business logic
+  res.end("Policies data");
+}
+*/

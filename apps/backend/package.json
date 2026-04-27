@@ -12,7 +12,11 @@
   "license": "ISC",
   "dependencies": {
     "@types/node": "^25.6.0",
+    "jsonwebtoken": "^9.0.3",
     "ts-node": "^10.9.2",
     "typescript": "^6.0.3"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.10"
   }
 }
