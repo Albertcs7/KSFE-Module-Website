@@ -1,7 +1,6 @@
-import jwt from "jsonwebtoken";
 import { IncomingMessage, ServerResponse } from "http";
-
-const JWT_SECRET = "your_secret_key";
+import jwt from "jsonwebtoken";
+import { JWT_SECRET } from "../../config/env";
 
 export interface AuthenticatedRequest extends IncomingMessage {
   user?: any;
@@ -61,4 +60,22 @@ export const authorize = (requiredPermission: string) => {
 /*
 if (!authenticate(req, res)) return;
 if (!authorize("viewPolicies")(req, res)) return;
+*/
+//OR
+/*
+import { authenticate, authorize } from "../../core/auth/auth.middleware";
+import { runMiddlewares } from "../../core/http/middlewareRunner";
+
+if (req.url === "/policies" && req.method === "GET") {
+
+  const allowed = runMiddlewares(req, res, [
+    authenticate,
+    authorize("viewPolicies"),
+  ]);
+
+  if (!allowed) return;
+
+  // ✅ Clean business logic
+  res.end("Policies data");
+}
 */

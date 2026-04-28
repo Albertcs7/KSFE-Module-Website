@@ -1,9 +1,8 @@
 import jwt from "jsonwebtoken";
-import { loginBody } from "./auth.types";
+import { JWT_SECRET } from "../../config/env";
 import { externalAuthLogin } from "../../integrations/external-auth/externalAuth.service";
 import { LoginApiResponse } from "../../integrations/external-auth/externalAuth.types";
-
-const JWT_SECRET = "your_secret_key"; // move to .env later
+import { loginBody } from "./auth.types";
 
 const forcedModules = ["insuranceModule"]
 
