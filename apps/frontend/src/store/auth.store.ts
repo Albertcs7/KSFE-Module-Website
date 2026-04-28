@@ -1,4 +1,5 @@
-import { loginApi, type LoginPayload } from "@/services/api/auth.api";
+import { loginApi, type LoginPayload, logoutApi } from "@/services/api/auth.api";
+import { clearLocalAuth } from "@/services/authHelpers";
 import type {
   AuthUserData,
   BackendLoginData,
@@ -212,11 +213,14 @@ export const useAuthStore = defineStore("auth", {
     /**
      * Logout action - clear all user data and tokens
      */
-    logout() {
+    async logout() {
+      try {
+        await logoutApi();
+      } catch {}
+
       this.user = null;
       this.token = null;
-      localStorage.removeItem("token");
-      localStorage.removeItem("auth_user");
+      clearLocalAuth();
     }
   },
 });

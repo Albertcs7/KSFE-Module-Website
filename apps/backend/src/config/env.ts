@@ -47,3 +47,9 @@ const requiredEnv = (name: string): string => {
 
 export const JWT_SECRET = requiredEnv("JWT_SECRET");
 export const PORT = process.env.PORT || "5000";
+// Prefer explicit REFRESH_TOKEN_SECRET, but fall back to JWT_SECRET for local/dev convenience
+export const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET || JWT_SECRET;
+export const ACCESS_TOKEN_EXPIRES_IN = process.env.ACCESS_TOKEN_EXPIRES_IN || "15m";
+export const REFRESH_TOKEN_EXPIRES_IN = process.env.REFRESH_TOKEN_EXPIRES_IN || "7d";
+export const REFRESH_COOKIE_NAME = process.env.REFRESH_COOKIE_NAME || "refreshToken";
+export const NODE_ENV = process.env.NODE_ENV || "development";

@@ -1,5 +1,5 @@
 import jwt from "jsonwebtoken";
-import { JWT_SECRET } from "../../config/env";
+import { ACCESS_TOKEN_EXPIRES_IN, JWT_SECRET, REFRESH_TOKEN_EXPIRES_IN, REFRESH_TOKEN_SECRET } from "../../config/env";
 import { externalAuthLogin } from "../../integrations/external-auth/externalAuth.service";
 import { LoginApiResponse } from "../../integrations/external-auth/externalAuth.types";
 import { loginBody } from "./auth.types";
@@ -25,26 +25,32 @@ export const loginService = async (
       (p) => p.name
     );
 
-    // Create JWT
-    const token = jwt.sign(
-      {
-        role: user.roleName,
-        employeeId: user.employee_id,
-        branchId: user.branchId,
-        designation: user.designation,
-        permissions: forcedPermissions, //permissionNames
-        modules: forcedModules,  //user.role.modules (use this when modules are added to the api)
-      },
-      JWT_SECRET,
-      { expiresIn: "1h" }
-    );
+    // Create payload for tokens
+    const payload = {
+      role: user.roleName,
+      employeeId: user.employee_id,
+      branchId: user.branchId,
+      designation: user.designation,
+      permissions: forcedPermissions, //permissionNames
+      modules: forcedModules,  //user.role.modules (use this when modules are added to the api)
+    };
 
-    //  Send everything frontend needs
+    // Create access token (short lived)
+    const accessToken = jwt.sign(payload, JWT_SECRET, {
+      expiresIn: ACCESS_TOKEN_EXPIRES_IN as any,
+    });
+
+    // Create refresh token (long lived) - signed with different secret
+    const refreshToken = jwt.sign(payload, REFRESH_TOKEN_SECRET, {
+      expiresIn: REFRESH_TOKEN_EXPIRES_IN as any,
+    });
+
+    //  Send everything frontend needs. Return refreshToken separately
     return {
       status: true,
       message: response.message,
       data: {
-        token,
+        token: accessToken,
 
         user: {
           id: user.userId,
@@ -59,6 +65,7 @@ export const loginService = async (
         permissions: forcedPermissions, //permissionNames
         modules: forcedModules, //user.role.modules (use this when modules are added to the api)
       },
+      refreshToken,
     };
   } catch (error: any) {
     throw new Error(error.message || "Auth service failed");

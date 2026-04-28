@@ -18,10 +18,12 @@ export const createApp = () => {
 
     res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE");
     res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    // Allow cookies/credentials for refresh token cookie
+    res.setHeader("Access-Control-Allow-Credentials", "true");
 
     // ✅ 2. Handle preflight (VERY IMPORTANT)
     if (req.method === "OPTIONS") {
-      res.writeHead(204);
+      res.writeHead(204, { "Access-Control-Allow-Credentials": "true" });
       res.end();
       return;
     }

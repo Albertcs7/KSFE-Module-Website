@@ -1,4 +1,4 @@
-import axiosInstance from "../http/axios";
+import axiosInstance, { refreshClient } from "../http/axios";
 import type { BackendLoginResponse } from "../types/auth.types";
 
 export interface LoginPayload {
@@ -116,5 +116,15 @@ export const loginApi = async (
     payload
   );
 
+  return response.data;
+};
+
+export const refreshApi = async () => {
+  const response = await refreshClient.post("/auth/refresh");
+  return response.data;
+};
+
+export const logoutApi = async () => {
+  const response = await refreshClient.post("/auth/logout");
   return response.data;
 };

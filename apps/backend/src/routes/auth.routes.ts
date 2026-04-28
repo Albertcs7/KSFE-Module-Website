@@ -1,5 +1,5 @@
-import { IncomingMessage,ServerResponse } from "http";
-import { loginController } from "../core/auth/auth.contoller";
+import { IncomingMessage, ServerResponse } from "http";
+import { loginController, logoutController, refreshController } from "../core/auth/auth.contoller";
 
 export const authRoutes = async (req:IncomingMessage,res:ServerResponse)=>{
     const url = req.url ||  ""
@@ -7,6 +7,14 @@ export const authRoutes = async (req:IncomingMessage,res:ServerResponse)=>{
 
     if (req.method === "POST" && req.url?.startsWith("/auth/login")){
         return loginController(req,res);
+    }
+
+    if (req.method === "POST" && req.url?.startsWith("/auth/refresh")){
+        return refreshController(req,res);
+    }
+
+    if (req.method === "POST" && req.url?.startsWith("/auth/logout")){
+        return logoutController(req,res);
     }
 
     res.writeHead(404);
