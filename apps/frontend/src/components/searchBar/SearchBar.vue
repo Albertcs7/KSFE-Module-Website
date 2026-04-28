@@ -27,13 +27,16 @@ const rootRef = ref<HTMLElement | null>(null)
 const normalizedQuery = computed(() => query.value.trim().toLowerCase())
 
 const filteredItems = computed(() => {
-  if (!normalizedQuery.value) {
-    return props.items.slice(0, 6)
+  // Show nothing until at least 2 characters are typed
+  if (normalizedQuery.value.length < 2) {
+    return []
   }
 
+  const prefix = normalizedQuery.value.slice(0, 2)
+
   return props.items.filter((item) => {
-    const text = `${item.label} ${item.description ?? ''}`.toLowerCase()
-    return text.includes(normalizedQuery.value)
+    // Only show items whose label starts with the same first 2 characters
+    return item.label.toLowerCase().startsWith(prefix)
   })
 })
 
@@ -94,10 +97,10 @@ onBeforeUnmount(() => {
     <div v-if="showDropdown" class="searchbar-dropdown">
       <button
         v-for="item in filteredItems"
-        :key="item.path"
+        :key="item.label"
         type="button"
         class="searchbar-option"
-        @click="onSelect(item)"
+        @mousedown.prevent="onSelect(item)"
       >
         <strong>{{ item.label }}</strong>
         <small v-if="item.description">{{ item.description }}</small>

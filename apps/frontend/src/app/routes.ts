@@ -8,12 +8,18 @@ import GISPage from '../modules/Insurance/pages/GISPage.vue'
 import AddUserPage from '../modules/Insurance/pages/AddUserPage.vue'
 import MonthlyReportPage from '../modules/Insurance/pages/MonthlyReportPage.vue'
 import LoginPage from './pages/LoginPage.vue'
+import UnauthorizedPage from './pages/UnauthorizedPage.vue'
 
 export const appRoutes: RouteRecordRaw[] = [
   {
     path: '/login',
     name: 'login',
     component: LoginPage,
+  },
+  {
+    path: '/unauthorized',
+    name: 'unauthorized',
+    component: UnauthorizedPage,
   },
   {
     path: '/',
