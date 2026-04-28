@@ -7,7 +7,7 @@ const allowedOrigins = [
 ];
 
 export const createApp = () => {
-  const server = http.createServer((req, res) => {
+  const server = http.createServer(async (req, res) => {
 
     // ✅ 1. Handle CORS FIRST
     const origin = req.headers.origin;
@@ -28,8 +28,13 @@ export const createApp = () => {
       return;
     }
 
-    // ✅ 3. Continue to router
-    router(req, res);
+    // ✅ 3. Router safety (THIS is where your code goes)
+    const handled = await router(req, res);
+
+    if (!handled) {
+      res.writeHead(404);
+      res.end(JSON.stringify({ message: "Route not found" }));
+    }
   });
 
   return server;

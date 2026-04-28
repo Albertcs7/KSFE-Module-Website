@@ -1,22 +1,25 @@
 import { IncomingMessage, ServerResponse } from "http";
 import { loginController, logoutController, refreshController } from "../core/auth/auth.contoller";
 
-export const authRoutes = async (req:IncomingMessage,res:ServerResponse)=>{
-    const url = req.url ||  ""
-    const method = req.method || "GET"
+export const authRoutes = async (
+  req: IncomingMessage,
+  res: ServerResponse
+): Promise<boolean> => {
 
-    if (req.method === "POST" && req.url?.startsWith("/auth/login")){
-        return loginController(req,res);
-    }
+  if (req.method === "POST" && req.url?.startsWith("/auth/login")) {
+    await loginController(req, res);
+    return true;
+  }
 
-    if (req.method === "POST" && req.url?.startsWith("/auth/refresh")){
-        return refreshController(req,res);
-    }
+  if (req.method === "POST" && req.url?.startsWith("/auth/refresh")) {
+    await refreshController(req, res);
+    return true;
+  }
 
-    if (req.method === "POST" && req.url?.startsWith("/auth/logout")){
-        return logoutController(req,res);
-    }
+  if (req.method === "POST" && req.url?.startsWith("/auth/logout")) {
+    await logoutController(req, res);
+    return true;
+  }
 
-    res.writeHead(404);
-    return res.end(JSON.stringify({ message: "Auth route not found" }));
-}
+  return false; // ✅ important
+};

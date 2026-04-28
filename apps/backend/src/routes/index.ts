@@ -1,23 +1,37 @@
-import { IncomingMessage,ServerResponse } from "http";
-import { authRoutes } from "./auth.routes"
+import { IncomingMessage, ServerResponse } from "http";
+import { authRoutes } from "./auth.routes";
+import { insuranceRoutes } from "../modules/insurance/insurance.routes";
+// later: import { insuranceRoutes } ...
 
-export const router = (req:IncomingMessage,res:ServerResponse)=>{
-    const  url = req.url || ""
-    const method = req.method || "GET";
+export const router = async (
+  req: IncomingMessage,
+  res: ServerResponse
+): Promise<boolean> => {
 
-    res.setHeader("Content-Type", "application/json");
+  const url = req.url || "";
+  const method = req.method || "GET";
 
-    if(url.startsWith("/auth")){
-        return authRoutes(req,res);
-    }
-    if (url === "/" && method === "GET") {
-    res.writeHead(200);
-    return res.end(JSON.stringify({ message: "KSFE API Running 🚀" }));
+  res.setHeader("Content-Type", "application/json");
+
+  // Auth routes
+  if (url.startsWith("/auth")) {
+    return await authRoutes(req, res); // returns true/false
+  }
+  
+  //Insurance routes
+  if (url.startsWith("/insurance")) {
+    if (await insuranceRoutes(req, res)) return true;
   }
 
-  res.writeHead(404);
-  return res.end(JSON.stringify({ message: "Route not found" }));
-}
+  // Root route
+  if (url === "/" && method === "GET") {
+    res.writeHead(200);
+    res.end(JSON.stringify({ message: "KSFE API Running 🚀" }));
+    return true;
+  }
+
+  return false; // ❗ no response here
+};
 
 
 //for autehication and autharisation use this
