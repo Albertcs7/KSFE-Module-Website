@@ -43,12 +43,26 @@ export const useGISStore = defineStore('gis', () => {
   
   let storedUsers = localStorage.getItem('gis_users')
   
-  // Migration: Clear old database if it contains 'EMP' codes
-  if (storedUsers && storedUsers.includes('EMP')) {
-    localStorage.removeItem('gis_users')
-    localStorage.removeItem('gis_remittances')
-    localStorage.removeItem('gis_cheques')
-    storedUsers = null
+  // Migration: Clear old database only if empCode fields use the old 'EMP' prefix format
+  // (e.g. 'EMP001'). We parse the JSON and check only the empCode field so that
+  // employee names containing 'EMP' do NOT accidentally trigger a wipe of remittances.
+  if (storedUsers) {
+    try {
+      const parsed: Array<{ empCode?: string }> = JSON.parse(storedUsers)
+      const hasOldFormat = parsed.some(u => /^EMP\d/i.test(u.empCode ?? ''))
+      if (hasOldFormat) {
+        localStorage.removeItem('gis_users')
+        localStorage.removeItem('gis_remittances')
+        localStorage.removeItem('gis_cheques')
+        storedUsers = null
+      }
+    } catch {
+      // Corrupt data – start fresh
+      localStorage.removeItem('gis_users')
+      localStorage.removeItem('gis_remittances')
+      localStorage.removeItem('gis_cheques')
+      storedUsers = null
+    }
   }
 
   const users = ref<GISUser[]>(storedUsers ? JSON.parse(storedUsers) : [
@@ -84,7 +98,9 @@ export const useGISStore = defineStore('gis', () => {
    */
   const addRemittance = (remittance: GISRemittance) => {
     // In production: await api.post('/gis/remittances', remittance)
-    remittances.value.push(remittance)
+    // Normalize empCode to uppercase so search filtering always matches,
+    // regardless of what case the user typed in the form.
+    remittances.value.push({ ...remittance, empCode: remittance.empCode.toUpperCase() })
   }
 
   /**

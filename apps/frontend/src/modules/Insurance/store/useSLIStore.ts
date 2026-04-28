@@ -43,12 +43,27 @@ export const useSLIStore = defineStore('sli', () => {
   
   let storedUsers = localStorage.getItem('sli_users')
   
-  // Migration: Clear old database if it contains 'EMP' codes
-  if (storedUsers && storedUsers.includes('EMP')) {
-    localStorage.removeItem('sli_users')
-    localStorage.removeItem('sli_remittances')
-    localStorage.removeItem('sli_cheques')
-    storedUsers = null
+  // Migration: Clear old database only if empCode fields use the old 'EMP' prefix format
+  // (e.g. 'EMP001'). We parse the JSON and check only the empCode field so that
+  // employee names containing 'EMP' (e.g. 'Empower Corp') do NOT accidentally trigger
+  // a wipe of all remittance and cheque data on every page reload.
+  if (storedUsers) {
+    try {
+      const parsed: Array<{ empCode?: string }> = JSON.parse(storedUsers)
+      const hasOldFormat = parsed.some(u => /^EMP\d/i.test(u.empCode ?? ''))
+      if (hasOldFormat) {
+        localStorage.removeItem('sli_users')
+        localStorage.removeItem('sli_remittances')
+        localStorage.removeItem('sli_cheques')
+        storedUsers = null
+      }
+    } catch {
+      // Corrupt data – start fresh
+      localStorage.removeItem('sli_users')
+      localStorage.removeItem('sli_remittances')
+      localStorage.removeItem('sli_cheques')
+      storedUsers = null
+    }
   }
 
   const users = ref<SLIUser[]>(storedUsers ? JSON.parse(storedUsers) : [
@@ -84,7 +99,9 @@ export const useSLIStore = defineStore('sli', () => {
    */
   const addRemittance = (remittance: SLIRemittance) => {
     // In production: await api.post('/sli/remittances', remittance)
-    remittances.value.push(remittance)
+    // Normalize empCode to uppercase so search filtering always matches,
+    // regardless of what case the user typed in the form.
+    remittances.value.push({ ...remittance, empCode: remittance.empCode.toUpperCase() })
   }
 
   /**

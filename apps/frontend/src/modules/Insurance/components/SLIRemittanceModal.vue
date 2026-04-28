@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useSLIStore, type SLIRemittance } from '../store/useSLIStore'
 import { useToast } from '../../../composables/useToast'
 
@@ -22,6 +22,34 @@ const formData = ref<SLIRemittance>({
   dueMonth: '',
   amountDeducted: 0,
   chequeId: ''
+})
+
+// Get available SLI policies for the entered employee code
+const availablePolicies = computed(() => {
+  if (!formData.value.empCode) return []
+  const empCodeUpper = formData.value.empCode.toUpperCase()
+  // Get all unique policies for this employee
+  const policies = sliStore.users
+    .filter(u => u.empCode.toUpperCase() === empCodeUpper)
+    .map(u => ({
+      number: u.sliPolicyNumber,
+      premium: u.premium,
+      maturity: u.dateOfMaturity
+    }))
+  
+  // Deduplicate by policy number
+  const uniquePolicies = Array.from(
+    new Map(policies.map(p => [p.number, p])).values()
+  )
+  return uniquePolicies
+})
+
+// Get employee name for selected emp code
+const selectedEmpName = computed(() => {
+  if (!formData.value.empCode) return ''
+  const empCodeUpper = formData.value.empCode.toUpperCase()
+  const user = sliStore.users.find(u => u.empCode.toUpperCase() === empCodeUpper)
+  return user ? user.empName : ''
 })
 
 const handleSubmit = () => {
@@ -60,15 +88,47 @@ const handleSubmit = () => {
         BACKEND/FRONTEND TEAM NOTE:
         Maps to SLIRemittance interface. Ensure proper payload structure when linking to API.
       -->
+      <!-- Employee Info Section -->
+      <div v-if="selectedEmpName" class="employee-info">
+        <div class="emp-avatar">👤</div>
+        <div class="emp-details">
+          <p class="emp-code">{{ formData.empCode }}</p>
+          <p class="emp-name">{{ selectedEmpName }}</p>
+        </div>
+      </div>
+
       <form @submit.prevent="handleSubmit" class="modal-form">
         <div class="form-group">
           <label for="remitEmpCode">Employee Code</label>
           <input id="remitEmpCode" v-model="formData.empCode" type="text" pattern="[0-9]+" placeholder="e.g. 3571" required />
         </div>
         
+        <!-- SLI Policy Dropdown - shown after employee code is entered -->
         <div class="form-group">
           <label for="remitPolicyNumber">SLI Policy Number</label>
-          <input id="remitPolicyNumber" v-model="formData.sliPolicyNumber" type="text" placeholder="e.g. SLI-1234" required />
+          <select 
+            v-if="availablePolicies.length > 0"
+            id="remitPolicyNumber" 
+            v-model="formData.sliPolicyNumber" 
+            required
+            class="policy-dropdown"
+          >
+            <option value="">Select a policy</option>
+            <option v-for="policy in availablePolicies" :key="policy.number" :value="policy.number">
+              {{ policy.number }} (Premium: ₹{{ policy.premium.toFixed(2) }})
+            </option>
+          </select>
+          <input 
+            v-else
+            id="remitPolicyNumber" 
+            v-model="formData.sliPolicyNumber" 
+            type="text" 
+            placeholder="e.g. SLI-1234" 
+            required 
+          />
+          <small v-if="availablePolicies.length === 0 && formData.empCode" class="text-muted">
+            No policies found for this employee code
+          </small>
         </div>
         
         <div class="form-group">
@@ -215,5 +275,66 @@ const handleSubmit = () => {
 
 .btn-primary:hover {
   background: #4a9500;
+}
+
+/* Employee Info Section */
+.employee-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: #f8fafc;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  border-left: 4px solid #5bb700;
+}
+
+.emp-avatar {
+  font-size: 2.5rem;
+  min-width: 50px;
+  text-align: center;
+}
+
+.emp-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.emp-code {
+  font-size: 0.85rem;
+  color: #64748b;
+  margin: 0;
+  font-weight: 500;
+}
+
+.emp-name {
+  font-size: 1rem;
+  color: #1d3a6d;
+  margin: 0;
+  font-weight: 600;
+}
+
+/* Policy Dropdown Styling */
+.policy-dropdown {
+  padding: 0.75rem 1rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 1rem;
+  background-color: #fff;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.policy-dropdown:focus {
+  outline: none;
+  border-color: #5bb700;
+  box-shadow: 0 0 0 3px rgba(91, 183, 0, 0.1);
+}
+
+.text-muted {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  font-style: italic;
 }
 </style>

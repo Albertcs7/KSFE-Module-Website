@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useGISStore, type GISRemittance } from '../store/useGISStore'
 import { useToast } from '../../../composables/useToast'
 
@@ -22,6 +22,31 @@ const formData = ref<GISRemittance>({
   dueMonth: '',
   amountDeducted: 0,
   chequeId: ''
+})
+
+// Get the GIS policy for the entered employee code (auto-fill since only one policy per person)
+const gisPolicy = computed(() => {
+  if (!formData.value.empCode) return null
+  const empCodeUpper = formData.value.empCode.toUpperCase()
+  const user = gisStore.users.find(u => u.empCode.toUpperCase() === empCodeUpper)
+  return user
+})
+
+// Get employee name for selected emp code
+const selectedEmpName = computed(() => {
+  if (!formData.value.empCode) return ''
+  const empCodeUpper = formData.value.empCode.toUpperCase()
+  const user = gisStore.users.find(u => u.empCode.toUpperCase() === empCodeUpper)
+  return user ? user.empName : ''
+})
+
+// Auto-fill policy number when employee code changes
+watch(() => formData.value.empCode, (newEmpCode) => {
+  if (newEmpCode && gisPolicy.value) {
+    formData.value.gisPolicyNumber = gisPolicy.value.gisPolicyNumber
+  } else {
+    formData.value.gisPolicyNumber = ''
+  }
 })
 
 const handleSubmit = () => {
@@ -60,15 +85,39 @@ const handleSubmit = () => {
         BACKEND/FRONTEND TEAM NOTE:
         Maps to GISRemittance interface. Ensure proper payload structure when linking to API.
       -->
+      <!-- Employee Info Section -->
+      <div v-if="selectedEmpName" class="employee-info">
+        <div class="emp-avatar">👤</div>
+        <div class="emp-details">
+          <p class="emp-code">{{ formData.empCode }}</p>
+          <p class="emp-name">{{ selectedEmpName }}</p>
+        </div>
+      </div>
+
       <form @submit.prevent="handleSubmit" class="modal-form">
         <div class="form-group">
           <label for="remitEmpCode">Employee Code</label>
           <input id="remitEmpCode" v-model="formData.empCode" type="text" pattern="[0-9]+" placeholder="e.g. 3571" required />
         </div>
         
+        <!-- GIS Policy Number - Auto-filled, read-only -->
         <div class="form-group">
           <label for="remitPolicyNumber">GIS Policy Number</label>
-          <input id="remitPolicyNumber" v-model="formData.gisPolicyNumber" type="text" placeholder="e.g. GIS-1234" required />
+          <input 
+            id="remitPolicyNumber" 
+            v-model="formData.gisPolicyNumber" 
+            type="text" 
+            placeholder="Auto-filled when employee code is entered" 
+            readonly 
+            :class="{ 'policy-autofilled': formData.gisPolicyNumber }"
+            required 
+          />
+          <small v-if="formData.empCode && !gisPolicy" class="text-muted">
+            No GIS policy found for this employee code
+          </small>
+          <small v-if="formData.gisPolicyNumber" class="text-success">
+            ✓ Policy auto-filled (Premium: ₹{{ gisPolicy?.premium.toFixed(2) }})
+          </small>
         </div>
         
         <div class="form-group">
@@ -215,5 +264,67 @@ const handleSubmit = () => {
 
 .btn-primary:hover {
   background: #4a9500;
+}
+
+/* Employee Info Section */
+.employee-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: #f8fafc;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  border-left: 4px solid #5bb700;
+}
+
+.emp-avatar {
+  font-size: 2.5rem;
+  min-width: 50px;
+  text-align: center;
+}
+
+.emp-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.emp-code {
+  font-size: 0.85rem;
+  color: #64748b;
+  margin: 0;
+  font-weight: 500;
+}
+
+.emp-name {
+  font-size: 1rem;
+  color: #1d3a6d;
+  margin: 0;
+  font-weight: 600;
+}
+
+/* Read-only Policy Field */
+input[readonly] {
+  background-color: #f1f5f9;
+  cursor: not-allowed;
+  color: #64748b;
+}
+
+.policy-autofilled {
+  background-color: #f0fdf4;
+  border-color: #86efac;
+}
+
+.text-muted {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  font-style: italic;
+}
+
+.text-success {
+  font-size: 0.85rem;
+  color: #16a34a;
+  font-weight: 500;
 }
 </style>
