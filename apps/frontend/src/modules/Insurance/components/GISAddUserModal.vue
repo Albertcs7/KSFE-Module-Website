@@ -1,99 +1,142 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useGISStore, type GISUser } from '../store/useGISStore'
-import { useToast } from '../../../composables/useToast'
+import { ref } from "vue";
+import { useToast } from "../../../composables/useToast";
+import type { GISUser } from "../store/useGISStore";
 
+/**
+ * Props from parent
+ * isOpen → controls modal visibility
+ */
 const props = defineProps<{
-  isOpen: boolean
-}>()
+  isOpen: boolean;
+}>();
 
+/**
+ * Events emitted to parent
+ * close → close modal
+ * submit → send form data to parent
+ */
 const emit = defineEmits<{
-  (e: 'close'): void
-}>()
+  (e: "close"): void;
+  (e: "submit", user: GISUser): void;
+}>();
 
-const gisStore = useGISStore()
-const toast = useToast()
+const toast = useToast();
 
-// Form State
-const formData = ref<GISUser>({
-  empCode: '',
-  empName: '',
-  gisPolicyNumber: '',
+/**
+ * Initial form structure
+ * This matches frontend model (NOT backend)
+ */
+const createInitialFormData = (): GISUser => ({
+  empCode: "",
+  empName: "",
+  gisPolicyNumber: "",
   premium: 0,
-  dateOfMaturity: ''
-})
+  dateOfMaturity: "",
+});
 
+/**
+ * Reactive form state
+ */
+const formData = ref<GISUser>(createInitialFormData());
+
+/**
+ * Handle form submission
+ */
 const handleSubmit = () => {
-  // Validate basic data
+  // ✅ Basic validation
   if (!formData.value.empCode || !formData.value.empName) {
-    toast.error("Please fill in required fields: Employee Code and Name.")
-    return
+    toast.error("Employee Code and Name are required");
+    return;
   }
-  
-  // Enforce 1 policy limit per person for GIS
-  const existingPolicy = gisStore.users.find(u => u.empCode.toUpperCase() === formData.value.empCode.toUpperCase())
-  if (existingPolicy) {
-    toast.error("This employee already has a GIS policy. Only one policy is allowed per person in GIS.")
-    return
+
+  if (!formData.value.gisPolicyNumber) {
+    toast.error("Policy number is required");
+    return;
   }
-  
-  // Save to our mock database
-  gisStore.addUser({ ...formData.value })
-  
-  // Reset form and close
-  formData.value = {
-    empCode: '',
-    empName: '',
-    gisPolicyNumber: '',
-    premium: 0,
-    dateOfMaturity: ''
+
+  if (!formData.value.premium || formData.value.premium <= 0) {
+    toast.error("Premium must be greater than 0");
+    return;
   }
-  emit('close')
-  toast.success("User added successfully!")
-}
+
+  // ✅ Emit data to parent (IMPORTANT)
+  emit("submit", { ...formData.value });
+
+  // 🔄 Reset form after submit
+  formData.value = createInitialFormData();
+
+  // ❌ Modal should NOT stay open after submit
+  emit("close");
+};
 </script>
 
 <template>
+  <!-- Modal Overlay -->
   <div v-if="isOpen" class="modal-overlay" @click.self="emit('close')">
     <div class="modal-content">
+      <!-- Header -->
       <div class="modal-header">
-        <h2>Add New GIS User</h2>
+        <h2>Add GIS Policy</h2>
         <button class="close-btn" @click="emit('close')">&times;</button>
       </div>
-      
-      <!-- 
-        BACKEND/FRONTEND TEAM NOTE:
-        This form maps to the GISUser interface. Ensure input names match API expectations when connecting the real backend.
-      -->
+
+      <!-- Form -->
       <form @submit.prevent="handleSubmit" class="modal-form">
+        <!-- Employee Code -->
         <div class="form-group">
-          <label for="empCode">Employee Code</label>
-          <input id="empCode" v-model="formData.empCode" type="text" pattern="[0-9]+" placeholder="e.g. 3571" required />
+          <label>Employee Code</label>
+          <input
+            v-model="formData.empCode"
+            type="text"
+            placeholder="e.g. 3571"
+            required
+          />
         </div>
-        
+
+        <!-- Employee Name -->
         <div class="form-group">
-          <label for="empName">Employee Name</label>
-          <input id="empName" v-model="formData.empName" type="text" placeholder="e.g. John Doe" required />
+          <label>Employee Name</label>
+          <input
+            v-model="formData.empName"
+            type="text"
+            placeholder="e.g. John Doe"
+            required
+          />
         </div>
-        
+
+        <!-- Policy Number -->
         <div class="form-group">
-          <label for="gisPolicyNumber">GIS Policy Number</label>
-          <input id="gisPolicyNumber" v-model="formData.gisPolicyNumber" type="text" placeholder="e.g. GIS-1234" required />
+          <label>GIS Policy Number</label>
+          <input
+            v-model="formData.gisPolicyNumber"
+            type="text"
+            placeholder="e.g. GIS-1234"
+            required
+          />
         </div>
-        
+
+        <!-- Premium -->
         <div class="form-group">
-          <label for="premium">Premium (Amount)</label>
-          <input id="premium" v-model="formData.premium" type="number" placeholder="0.00" required />
+          <label>Premium</label>
+          <input
+            v-model.number="formData.premium"
+            type="number"
+            placeholder="0.00"
+            required
+          />
         </div>
-        
+
+        <!-- Maturity Date -->
         <div class="form-group">
-          <label for="dateOfMaturity">Date of Maturity</label>
-          <input id="dateOfMaturity" v-model="formData.dateOfMaturity" type="date" required />
+          <label>Date of Maturity</label>
+          <input v-model="formData.dateOfMaturity" type="date" required />
         </div>
-        
+
+        <!-- Actions -->
         <div class="modal-actions">
           <button type="button" class="btn-cancel" @click="emit('close')">Cancel</button>
-          <button type="submit" class="btn-primary">Add User</button>
+          <button type="submit" class="btn-primary">Add Policy</button>
         </div>
       </form>
     </div>
@@ -126,8 +169,14 @@ const handleSubmit = () => {
 }
 
 @keyframes gisdeUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .modal-header {

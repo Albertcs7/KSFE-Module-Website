@@ -9,6 +9,7 @@
 
 import { ref, computed } from 'vue'
 import { useGISStore, type GISUser } from '../store/useGISStore'
+import { createPolicy } from "@/services/api/insurance.api";
 import SearchBar, { type SearchBarItem } from '../../../components/searchBar/SearchBar.vue'
 import { useToast } from '../../../composables/useToast'
 
@@ -50,11 +51,11 @@ const searchItems = computed<SearchBarItem[]>(() => {
       uniqueEmps.set(code, user)
     }
   })
-  
+
   return Array.from(uniqueEmps.values()).map(user => ({
     label: user.empCode.toUpperCase(),
     description: user.empName,
-    path: '' 
+    path: ''
   }))
 })
 
@@ -74,7 +75,7 @@ const displayedUsers = computed(() => {
   if (selectedEmpCode.value) {
     const searchCode = selectedEmpCode.value.toUpperCase()
     const userPolicies = gisStore.users.filter(u => u.empCode.toUpperCase() === searchCode)
-    
+
     // Deduplicate by policy number to ensure uniqueness
     const uniquePolicies = new Map<string, GISUser>()
     userPolicies.forEach(policy => {
@@ -157,6 +158,41 @@ const handleFileUpload = (event: Event) => {
   reader.readAsText(file)
   target.value = ''
 }
+
+  // --- BACKEND INTEGRATION: CREATE GIS POLICY ---
+
+  /**
+   * This function receives data from GISAddUserModal
+   * → Transforms frontend form data to backend format
+   * → Calls backend API
+   */
+  const handleGISSubmit = async (user: GISUser) => {
+    try {
+      //  Transform frontend → backend format
+      const payload = {
+        employee_code: Number(user.empCode),
+        employee_name: user.empName,
+        policy_no: user.gisPolicyNumber,
+        policy_type: "GIS", //  KEY: tells backend this is GIS
+        premium: Number(user.premium),
+        maturity_date: user.dateOfMaturity
+      };
+
+      //  Call backend API
+      await createPolicy(payload);
+
+      //  Optional: update local store (for immediate UI update)
+      gisStore.users.push({ ...user });
+
+      toast.success("GIS Policy created successfully");
+
+    } catch (err: any) {
+      console.error(err);
+
+      //  Show backend error
+      toast.error(err?.response?.data?.message || "Failed to create policy");
+    }
+  };
 </script>
 
 <template>
@@ -167,30 +203,96 @@ const handleFileUpload = (event: Event) => {
     -->
     <header class="gis-header">
       <div class="search-section">
-        <SearchBar 
-          :items="searchItems" 
+        <SearchBar
+          :items="searchItems"
           placeholder="Search by Employee Code (e.g. 3571)..."
-          @select="handleSearchSelect" 
+          @select="handleSearchSelect"
         />
-        <button v-if="selectedEmpCode" class="btn-clear" @click="clearSelection">Clear Search</button>
+        <button v-if="selectedEmpCode" class="btn-clear" @click="clearSelection">
+          Clear Search
+        </button>
       </div>
-      
+
       <div class="action-buttons">
-        <label class="btn-action secondary" style="cursor: pointer;" title="Upload Old Data via CSV">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+        <label
+          class="btn-action secondary"
+          style="cursor: pointer"
+          title="Upload Old Data via CSV"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            width="18"
+            height="18"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="17 8 12 3 7 8"></polyline>
+            <line x1="12" y1="3" x2="12" y2="15"></line>
+          </svg>
           Upload CSV
-          <input type="file" accept=".csv" @change="handleFileUpload" style="display: none;" />
+          <input
+            type="file"
+            accept=".csv"
+            @change="handleFileUpload"
+            style="display: none"
+          />
         </label>
-        <button class="btn-action primary" @click="isAddGISOpen = true" :disabled="hasGISPolicy">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"></path></svg>
+        <button
+          class="btn-action primary"
+          @click="isAddGISOpen = true"
+          :disabled="hasGISPolicy"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            width="18"
+            height="18"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M12 5v14M5 12h14"></path>
+          </svg>
           Add GIS Policy
         </button>
         <button class="btn-action secondary" @click="isRemittanceOpen = true">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line></svg>
+          <svg
+            viewBox="0 0 24 24"
+            width="18"
+            height="18"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <rect x="2" y="5" width="20" height="14" rx="2"></rect>
+            <line x1="2" y1="10" x2="22" y2="10"></line>
+          </svg>
           Add Monthly Remittance
         </button>
         <button class="btn-action secondary" @click="isChequeOpen = true">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+          <svg
+            viewBox="0 0 24 24"
+            width="18"
+            height="18"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+            <polyline points="10 9 9 9 8 9"></polyline>
+          </svg>
           Add Cheque Details
         </button>
       </div>
@@ -201,19 +303,20 @@ const handleFileUpload = (event: Event) => {
       Only renders if an employee has been selected via the search bar.
     -->
     <main v-if="selectedEmpCode" class="gis-content">
-      
       <!-- Common Employee Details Card: Shows Name and Code -->
       <div class="employee-header-card">
         <div class="emp-avatar">{{ selectedEmpName.charAt(0).toUpperCase() }}</div>
         <div class="emp-info">
           <h2>{{ selectedEmpName }}</h2>
-          <p>Employee Code: <strong>{{ selectedEmpCode }}</strong></p>
+          <p>
+            Employee Code: <strong>{{ selectedEmpCode }}</strong>
+          </p>
         </div>
       </div>
 
       <div class="content-section">
         <h3>Policies</h3>
-        
+
         <div class="data-table-container">
           <table class="data-table">
             <thead>
@@ -226,22 +329,65 @@ const handleFileUpload = (event: Event) => {
             </thead>
             <tbody>
               <tr v-for="user in displayedUsers" :key="user.gisPolicyNumber">
-                <td><strong>{{ user.gisPolicyNumber }}</strong></td>
+                <td>
+                  <strong>{{ user.gisPolicyNumber }}</strong>
+                </td>
                 <td>₹{{ user.premium }}</td>
                 <td>{{ user.dateOfMaturity }}</td>
                 <td class="actions-cell">
-                  <button class="btn-sm btn-edit" @click="openEditModal(user)" title="Edit">
-                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                  <button
+                    class="btn-sm btn-edit"
+                    @click="openEditModal(user)"
+                    title="Edit"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      width="14"
+                      height="14"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <path
+                        d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"
+                      ></path>
+                      <path
+                        d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"
+                      ></path>
+                    </svg>
                     Edit
                   </button>
-                  <button class="btn-sm btn-print" @click="openPrintModal(user)" title="Print / Export">
-                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                  <button
+                    class="btn-sm btn-print"
+                    @click="openPrintModal(user)"
+                    title="Print / Export"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      width="14"
+                      height="14"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                      <path
+                        d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"
+                      ></path>
+                      <rect x="6" y="14" width="12" height="8"></rect>
+                    </svg>
                     Print
                   </button>
                 </td>
               </tr>
               <tr v-if="displayedUsers.length === 0">
-                <td colspan="4" class="empty-state">No policies found for this employee.</td>
+                <td colspan="4" class="empty-state">
+                  No policies found for this employee.
+                </td>
               </tr>
             </tbody>
           </table>
@@ -249,7 +395,7 @@ const handleFileUpload = (event: Event) => {
       </div>
 
       <!-- REMITTANCES TABLE SECTION -->
-      <div class="content-section" style="margin-top: 2rem;">
+      <div class="content-section" style="margin-top: 2rem">
         <h3>Remittances</h3>
         <div class="data-table-container">
           <table class="data-table">
@@ -264,14 +410,18 @@ const handleFileUpload = (event: Event) => {
             </thead>
             <tbody>
               <tr v-for="(remit, index) in displayedRemittances" :key="index">
-                <td><strong>{{ remit.gisPolicyNumber }}</strong></td>
+                <td>
+                  <strong>{{ remit.gisPolicyNumber }}</strong>
+                </td>
                 <td>{{ remit.salaryMonth }}</td>
                 <td>{{ remit.dueMonth }}</td>
                 <td>₹{{ remit.amountDeducted }}</td>
-                <td>{{ remit.chequeId || '-' }}</td>
+                <td>{{ remit.chequeId || "-" }}</td>
               </tr>
               <tr v-if="displayedRemittances.length === 0">
-                <td colspan="5" class="empty-state">No remittances recorded for this employee.</td>
+                <td colspan="5" class="empty-state">
+                  No remittances recorded for this employee.
+                </td>
               </tr>
             </tbody>
           </table>
@@ -284,7 +434,19 @@ const handleFileUpload = (event: Event) => {
       Renders when NO employee is selected. Prompts user to search.
     -->
     <main v-else class="gis-content empty-content">
-      <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="#cbd5e1" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+      <svg
+        viewBox="0 0 24 24"
+        width="48"
+        height="48"
+        fill="none"
+        stroke="#cbd5e1"
+        stroke-width="1.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <circle cx="11" cy="11" r="8"></circle>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      </svg>
       <h2>Search for an Employee</h2>
       <p>Use the search bar above to select an employee and view their GIS details.</p>
     </main>
@@ -293,10 +455,18 @@ const handleFileUpload = (event: Event) => {
       MODAL COMPONENTS 
       These are mounted but hidden until their respective 'isOpen' prop becomes true.
     -->
-    <GISAddUserModal :is-open="isAddGISOpen" @close="isAddGISOpen = false" />
+    <GISAddUserModal
+      :isOpen="isAddGISOpen"
+      @close="isAddGISOpen = false"
+      @submit="handleGISSubmit"
+    />
     <GISRemittanceModal :is-open="isRemittanceOpen" @close="isRemittanceOpen = false" />
     <GISChequeModal :is-open="isChequeOpen" @close="isChequeOpen = false" />
-    <GISEditUserModal :is-open="isEditUserOpen" :user-to-edit="userToEdit" @close="isEditUserOpen = false" />
+    <GISEditUserModal
+      :is-open="isEditUserOpen"
+      :user-to-edit="userToEdit"
+      @close="isEditUserOpen = false"
+    />
     <ExportReportModal
       v-if="policyForExport"
       :is-open="isExportOpen"
@@ -304,7 +474,10 @@ const handleFileUpload = (event: Event) => {
       :emp-code="policyForExport.empCode"
       :emp-name="policyForExport.empName"
       :policy-number="policyForExport.gisPolicyNumber"
-      @close="isExportOpen = false; policyForExport = null"
+      @close="
+        isExportOpen = false;
+        policyForExport = null;
+      "
     />
   </section>
 </template>

@@ -1,9 +1,13 @@
 import { db } from "../../database/mysql";
 
+//Viewing employee policies
+
 export const getAllPoliciesRepo = async () => {
   const [rows] = await db.query("SELECT * FROM employee_policy");
   return rows;
 };
+
+//Adding a policy
 
 export const createPolicyRepo = async (data: any) => {
   const query = `
