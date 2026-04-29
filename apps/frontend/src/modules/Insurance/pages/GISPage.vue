@@ -20,6 +20,7 @@ import type {
 
 // Import Modals for GIS Actions
 import InsuranceChequeModal from '../components/shared/InsuranceChequeModal.vue'
+import InsuranceAddUserModal from '../components/shared/InsuranceAddUserModal.vue'
 import InsurancePolicyModal from '../components/shared/InsurancePolicyModal.vue'
 import InsuranceRemittanceModal from '../components/shared/InsuranceRemittanceModal.vue'
 import ExportReportModal from '../components/ExportReportModal.vue'
@@ -442,9 +443,8 @@ const handleFileUpload = (event: Event) => {
       MODAL COMPONENTS 
       These are mounted but hidden until their respective 'isOpen' prop becomes true.
     -->
-    <InsurancePolicyModal
+    <InsuranceAddUserModal
       :is-open="isAddGISOpen"
-      mode="add"
       module-type="GIS"
       :is-saving="gisStore.loading.addUser"
       :error="gisStore.error.addUser"
@@ -470,7 +470,6 @@ const handleFileUpload = (event: Event) => {
     />
     <InsurancePolicyModal
       :is-open="isEditUserOpen"
-      mode="edit"
       module-type="GIS"
       :user-to-edit="userToEditForm"
       :is-saving="gisStore.loading.updateUser"

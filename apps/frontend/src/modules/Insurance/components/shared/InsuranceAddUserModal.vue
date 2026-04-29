@@ -1,16 +1,15 @@
 <script setup lang="ts">
 /**
  * ============================================================================
- * InsurancePolicyModal.vue — Edit Existing User / Policy
+ * InsuranceAddUserModal.vue — Add New User / Policy
  * ============================================================================
- * A dedicated modal for EDITING an existing employee's insurance policy details.
- * This is separate from the Add User modal so backend integration is clear:
+ * A dedicated modal for enrolling a NEW employee into an insurance scheme.
+ * This is separate from the Edit modal so backend integration is clear:
  *
  * BACKEND TEAM:
- *   - This modal triggers an UPDATE / PUT operation.
- *   - Endpoint example: PUT /api/{moduleType}/users/{empCode}/{policyNumber}
+ *   - This modal triggers a CREATE / POST operation.
+ *   - Endpoint example: POST /api/{moduleType}/users
  *   - Payload: { empCode, empName, policyNumber, premium, dateOfMaturity }
- *   - empCode and policyNumber are read-only (used as identifiers, not editable).
  *   - Wire the @submit handler in the parent page to call your API.
  * ============================================================================
  */
@@ -23,8 +22,6 @@ const props = defineProps<{
   isOpen: boolean
   /** Which insurance scheme this modal is for ('SLI' or 'GIS') */
   moduleType: InsuranceModuleType
-  /** The existing user data to pre-populate the form with */
-  userToEdit?: InsurancePolicyForm | null
   /** Set to true while the parent is awaiting the API response */
   isSaving: boolean
   /** Error message from the store / API to display inside the modal */
@@ -46,12 +43,12 @@ const emptyForm = (): InsurancePolicyForm => ({
 
 const formData = ref<InsurancePolicyForm>(emptyForm())
 
-// Pre-populate form with existing user data when the modal opens
+// Reset form every time the modal opens
 watch(
   () => props.isOpen,
   (isOpen) => {
-    if (isOpen && props.userToEdit) {
-      formData.value = { ...props.userToEdit }
+    if (isOpen) {
+      formData.value = emptyForm()
     }
   },
 )
@@ -65,32 +62,29 @@ const handleSubmit = () => {
   <div v-if="isOpen" class="modal-overlay" @click.self="emit('close')">
     <div class="modal-content">
       <div class="modal-header">
-        <h2>Edit {{ moduleType }} User</h2>
+        <h2>Add New {{ moduleType }} User</h2>
         <button class="close-btn" :disabled="isSaving" @click="emit('close')">&times;</button>
       </div>
 
       <form @submit.prevent="handleSubmit" class="modal-form">
         <p v-if="error" class="form-error">{{ error }}</p>
 
-        <!-- Employee Code & Policy Number are read-only identifiers in edit mode -->
         <div class="form-group">
-          <label for="editUserEmpCode">Employee Code</label>
+          <label for="addUserEmpCode">Employee Code</label>
           <input
-            id="editUserEmpCode"
+            id="addUserEmpCode"
             v-model="formData.empCode"
             type="text"
             pattern="[0-9]+"
             placeholder="e.g. 3571"
-            readonly
-            disabled
             required
           />
         </div>
 
         <div class="form-group">
-          <label for="editUserEmpName">Employee Name</label>
+          <label for="addUserEmpName">Employee Name</label>
           <input
-            id="editUserEmpName"
+            id="addUserEmpName"
             v-model="formData.empName"
             type="text"
             placeholder="e.g. John Doe"
@@ -99,22 +93,20 @@ const handleSubmit = () => {
         </div>
 
         <div class="form-group">
-          <label for="editUserPolicyNumber">{{ moduleType }} Policy Number</label>
+          <label for="addUserPolicyNumber">{{ moduleType }} Policy Number</label>
           <input
-            id="editUserPolicyNumber"
+            id="addUserPolicyNumber"
             v-model="formData.policyNumber"
             type="text"
             :placeholder="`e.g. ${moduleType}-1234`"
-            readonly
-            disabled
             required
           />
         </div>
 
         <div class="form-group">
-          <label for="editUserPremium">Premium (Amount)</label>
+          <label for="addUserPremium">Premium (Amount)</label>
           <input
-            id="editUserPremium"
+            id="addUserPremium"
             v-model="formData.premium"
             type="number"
             placeholder="0.00"
@@ -123,9 +115,9 @@ const handleSubmit = () => {
         </div>
 
         <div class="form-group">
-          <label for="editUserDateOfMaturity">Date of Maturity</label>
+          <label for="addUserDateOfMaturity">Date of Maturity</label>
           <input
-            id="editUserDateOfMaturity"
+            id="addUserDateOfMaturity"
             v-model="formData.dateOfMaturity"
             type="date"
             required
@@ -135,7 +127,7 @@ const handleSubmit = () => {
         <div class="modal-actions">
           <button type="button" class="btn-cancel" :disabled="isSaving" @click="emit('close')">Cancel</button>
           <button type="submit" class="btn-primary" :disabled="isSaving">
-            {{ isSaving ? 'Saving...' : 'Save Changes' }}
+            {{ isSaving ? 'Saving...' : 'Add User' }}
           </button>
         </div>
       </form>
