@@ -8,15 +8,20 @@
  */
 
 import { ref, computed } from 'vue'
-import { useSLIStore, type SLIUser } from '../store/useSLIStore'
+import { useSLIStore, type SLICheque, type SLIRemittance, type SLIUser } from '../store/useSLIStore'
 import SearchBar, { type SearchBarItem } from '../../../components/searchBar/SearchBar.vue'
 import { useToast } from '../../../composables/useToast'
+import type {
+  InsuranceChequeForm,
+  InsurancePolicyForm,
+  InsurancePolicyOption,
+  InsuranceRemittanceForm,
+} from '../types/insurance.types'
 
 // Import Modals for SLI Actions
-import SLIRemittanceModal from '../components/SLIRemittanceModal.vue'
-import SLIChequeModal from '../components/SLIChequeModal.vue'
-import SLIEditUserModal from '../components/SLIEditUserModal.vue'
-import SLIAddUserModal from '../components/SLIAddUserModal.vue'
+import InsuranceChequeModal from '../components/shared/InsuranceChequeModal.vue'
+import InsurancePolicyModal from '../components/shared/InsurancePolicyModal.vue'
+import InsuranceRemittanceModal from '../components/shared/InsuranceRemittanceModal.vue'
 import ExportReportModal from '../components/ExportReportModal.vue'
 
 const sliStore = useSLIStore()
@@ -29,6 +34,8 @@ const isChequeOpen = ref(false)
 const isEditUserOpen = ref(false)
 const isAddSLIOpen = ref(false)
 const isExportOpen = ref(false)
+const isImporting = ref(false)
+const importError = ref('')
 
 // Tracks which policy row the Print button was clicked on
 const policyForExport = ref<SLIUser | null>(null)
@@ -102,6 +109,28 @@ const displayedRemittances = computed(() => {
   return []
 })
 
+const policyOptions = computed<InsurancePolicyOption[]>(() =>
+  sliStore.users.map(user => ({
+    empCode: user.empCode,
+    empName: user.empName,
+    policyNumber: user.sliPolicyNumber,
+    premium: user.premium,
+    dateOfMaturity: user.dateOfMaturity,
+  })),
+)
+
+const userToEditForm = computed<InsurancePolicyForm | null>(() => {
+  if (!userToEdit.value) return null
+
+  return {
+    empCode: userToEdit.value.empCode,
+    empName: userToEdit.value.empName,
+    policyNumber: userToEdit.value.sliPolicyNumber,
+    premium: userToEdit.value.premium,
+    dateOfMaturity: userToEdit.value.dateOfMaturity,
+  }
+})
+
 // --- ACTIONS ---
 
 // Opens the edit modal and passes the selected policy data to it
@@ -118,37 +147,156 @@ const openPrintModal = (policy: SLIUser) => {
   isExportOpen.value = true
 }
 
-// --- CSV UPLOAD LOGIC ---
+const toSLIUser = (user: InsurancePolicyForm): SLIUser => ({
+  empCode: user.empCode,
+  empName: user.empName,
+  sliPolicyNumber: user.policyNumber,
+  premium: user.premium,
+  dateOfMaturity: user.dateOfMaturity,
+})
+
+const toSLIRemittance = (remittance: InsuranceRemittanceForm): SLIRemittance => ({
+  empCode: remittance.empCode,
+  sliPolicyNumber: remittance.policyNumber,
+  salaryMonth: remittance.salaryMonth,
+  dueMonth: remittance.dueMonth,
+  amountDeducted: remittance.amountDeducted,
+  chequeId: remittance.chequeId,
+})
+
+const toSLICheque = (cheque: InsuranceChequeForm): SLICheque => ({
+  encashmentDate: cheque.encashmentDate,
+  receiptNoOrChequeNo: cheque.receiptNoOrChequeNo,
+  salaryMonth: cheque.salaryMonth,
+})
+
+const handleAddUser = async (user: InsurancePolicyForm) => {
+  try {
+    await sliStore.addUser(toSLIUser(user))
+    isAddSLIOpen.value = false
+    toast.success('User added successfully!')
+  } catch {
+    toast.error(sliStore.error.addUser || 'Unable to add user. Please try again.')
+  }
+}
+
+const handleUpdateUser = async (user: InsurancePolicyForm) => {
+  try {
+    await sliStore.updateUser(toSLIUser(user))
+    isEditUserOpen.value = false
+    toast.success('User details updated successfully!')
+  } catch {
+    toast.error(sliStore.error.updateUser || 'Unable to update user details. Please try again.')
+  }
+}
+
+const handleAddRemittance = async (remittance: InsuranceRemittanceForm) => {
+  if (!remittance.empCode || !remittance.policyNumber || !remittance.salaryMonth) {
+    toast.error('Please fill in required fields: Employee Code, Policy Number, and Salary Month.')
+    return
+  }
+
+  try {
+    await sliStore.addRemittance(toSLIRemittance(remittance))
+    isRemittanceOpen.value = false
+    toast.success('Remittance added successfully!')
+  } catch {
+    toast.error(sliStore.error.addRemittance || 'Unable to add remittance. Please try again.')
+  }
+}
+
+const handleAddCheque = async (cheque: InsuranceChequeForm) => {
+  if (!cheque.encashmentDate || !cheque.receiptNoOrChequeNo) {
+    toast.error('Please fill in required fields.')
+    return
+  }
+
+  try {
+    await sliStore.addCheque(toSLICheque(cheque))
+    isChequeOpen.value = false
+    toast.success('Cheque Details added successfully!')
+  } catch {
+    toast.error(sliStore.error.addCheque || 'Unable to save cheque details. Please try again.')
+  }
+}
+
+// --- CSV / XLS UPLOAD LOGIC ---
 const handleFileUpload = (event: Event) => {
   const target = event.target as HTMLInputElement
   const file = target.files?.[0]
   if (!file) return
 
+  isImporting.value = true
+  importError.value = ''
+
   const reader = new FileReader()
   reader.onload = (e) => {
     const text = e.target?.result as string
-    if (text) {
+
+    try {
+      if (!text) {
+        throw new Error('The selected file is empty.')
+      }
+
       const lines = text.split('\n').filter(line => line.trim())
       let count = 0
+      const duplicatePolicyNumbers = new Set<string>()
+      const existingPolicyNumbers = new Set(
+        sliStore.users.map(user => user.sliPolicyNumber.trim().toUpperCase())
+      )
+
       lines.forEach((line, index) => {
         if (index === 0 && line.toLowerCase().includes('emp')) return // Skip header
-        const parts = line.split(',')
-        if (parts.length >= 5) {
+        const separator = line.includes('\t') ? '\t' : ','
+        const parts = line.split(separator)
+        const policyNumber = parts[2]?.trim().toUpperCase() || ''
+
+        if (parts.length >= 5 && policyNumber) {
+          if (existingPolicyNumbers.has(policyNumber)) {
+            duplicatePolicyNumbers.add(policyNumber)
+            return
+          }
+
           sliStore.users.push({
              empCode: parts[0]?.trim() || '',
              empName: parts[1]?.trim() || '',
-             sliPolicyNumber: parts[2]?.trim() || '',
+             sliPolicyNumber: policyNumber,
              premium: Number(parts[3]) || 0,
              dateOfMaturity: parts[4]?.trim() || ''
           })
+          existingPolicyNumbers.add(policyNumber)
           count++
         }
       })
-      toast.success(`Successfully imported ${count} SLI policies from CSV!`)
+
+      if (count === 0) {
+        if (duplicatePolicyNumbers.size > 0) {
+          throw new Error(`Duplicate SLI policy number found: ${Array.from(duplicatePolicyNumbers).join(', ')}. No duplicate rows were imported.`)
+        }
+
+        throw new Error('No valid SLI policy rows were found in the selected file.')
+      }
+
+      toast.success(`Successfully imported ${count} SLI policies from the selected file!`)
+      if (duplicatePolicyNumbers.size > 0) {
+        importError.value = `Duplicate SLI policy number found: ${Array.from(duplicatePolicyNumbers).join(', ')}. Duplicate rows were not imported.`
+        toast.error(importError.value)
+      }
+    } catch (error) {
+      importError.value = error instanceof Error ? error.message : 'Unable to import the selected CSV file.'
+      toast.error(importError.value)
+    } finally {
+      isImporting.value = false
+      target.value = ''
     }
   }
+  reader.onerror = () => {
+    importError.value = 'Unable to read the selected file.'
+    isImporting.value = false
+    target.value = ''
+    toast.error(importError.value)
+  }
   reader.readAsText(file)
-  target.value = ''
 }
 </script>
 
@@ -169,10 +317,10 @@ const handleFileUpload = (event: Event) => {
       </div>
       
       <div class="action-buttons">
-        <label class="btn-action secondary" style="cursor: pointer;" title="Upload Old Data via CSV">
+        <label class="btn-action secondary" :class="{ disabled: isImporting }" style="cursor: pointer;" title="Upload Old Data via CSV or XLS">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-          Upload CSV
-          <input type="file" accept=".csv" @change="handleFileUpload" style="display: none;" />
+          {{ isImporting ? 'Importing...' : 'Upload CSV/XLS' }}
+          <input type="file" accept=".csv,.xls,text/csv,application/vnd.ms-excel" :disabled="isImporting" @change="handleFileUpload" style="display: none;" />
         </label>
         <button class="btn-action primary" @click="isAddSLIOpen = true">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"></path></svg>
@@ -188,6 +336,7 @@ const handleFileUpload = (event: Event) => {
         </button>
       </div>
     </header>
+    <p v-if="importError" class="page-error">{{ importError }}</p>
 
     <!-- 
       MAIN CONTENT AREA (ACTIVE STATE)
@@ -286,10 +435,42 @@ const handleFileUpload = (event: Event) => {
       MODAL COMPONENTS 
       These are mounted but hidden until their respective 'isOpen' prop becomes true.
     -->
-    <SLIAddUserModal :is-open="isAddSLIOpen" @close="isAddSLIOpen = false" />
-    <SLIRemittanceModal :is-open="isRemittanceOpen" @close="isRemittanceOpen = false" />
-    <SLIChequeModal :is-open="isChequeOpen" @close="isChequeOpen = false" />
-    <SLIEditUserModal :is-open="isEditUserOpen" :user-to-edit="userToEdit" @close="isEditUserOpen = false" />
+    <InsurancePolicyModal
+      :is-open="isAddSLIOpen"
+      mode="add"
+      module-type="SLI"
+      :is-saving="sliStore.loading.addUser"
+      :error="sliStore.error.addUser"
+      @close="isAddSLIOpen = false"
+      @submit="handleAddUser"
+    />
+    <InsuranceRemittanceModal
+      :is-open="isRemittanceOpen"
+      module-type="SLI"
+      policy-mode="select"
+      :policies="policyOptions"
+      :is-saving="sliStore.loading.addRemittance"
+      :error="sliStore.error.addRemittance"
+      @close="isRemittanceOpen = false"
+      @submit="handleAddRemittance"
+    />
+    <InsuranceChequeModal
+      :is-open="isChequeOpen"
+      :is-saving="sliStore.loading.addCheque"
+      :error="sliStore.error.addCheque"
+      @close="isChequeOpen = false"
+      @submit="handleAddCheque"
+    />
+    <InsurancePolicyModal
+      :is-open="isEditUserOpen"
+      mode="edit"
+      module-type="SLI"
+      :user-to-edit="userToEditForm"
+      :is-saving="sliStore.loading.updateUser"
+      :error="sliStore.error.updateUser"
+      @close="isEditUserOpen = false"
+      @submit="handleUpdateUser"
+    />
     <ExportReportModal
       v-if="policyForExport"
       :is-open="isExportOpen"
@@ -383,6 +564,22 @@ const handleFileUpload = (event: Event) => {
 .btn-action.secondary:hover {
   border-color: #1d3a6d;
   background: #f8fafc;
+}
+
+.btn-action.disabled {
+  cursor: not-allowed !important;
+  opacity: 0.65;
+  pointer-events: none;
+}
+
+.page-error {
+  margin: -1rem 0 0;
+  padding: 0.85rem 1rem;
+  color: #b91c1c;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  font-size: 0.9rem;
 }
 
 .sli-content {

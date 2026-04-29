@@ -38,6 +38,8 @@ export interface GISCheque {
   salaryMonth: string
 }
 
+type GISAction = 'addUser' | 'updateUser' | 'addRemittance' | 'addCheque'
+
 export const useGISStore = defineStore('gis', () => {
   // --- MOCK DATABASE TABLES ---
   
@@ -76,6 +78,20 @@ export const useGISStore = defineStore('gis', () => {
   const storedCheques = localStorage.getItem('gis_cheques')
   const cheques = ref<GISCheque[]>(storedCheques ? JSON.parse(storedCheques) : [])
 
+  const loading = ref<Record<GISAction, boolean>>({
+    addUser: false,
+    updateUser: false,
+    addRemittance: false,
+    addCheque: false,
+  })
+
+  const error = ref<Record<GISAction, string | null>>({
+    addUser: null,
+    updateUser: null,
+    addRemittance: null,
+    addCheque: null,
+  })
+
   // --- LOCAL STORAGE PERSISTENCE ---
   watch(users, (state) => localStorage.setItem('gis_users', JSON.stringify(state)), { deep: true })
   watch(remittances, (state) => localStorage.setItem('gis_remittances', JSON.stringify(state)), { deep: true })
@@ -87,41 +103,101 @@ export const useGISStore = defineStore('gis', () => {
    * Adds a new user to the GIS database.
    * @param user GISUser object
    */
-  const addUser = (user: GISUser) => {
+  const normalizePolicyNumber = (policyNumber: string) => policyNumber.trim().toUpperCase()
+
+  const runAction = async (action: GISAction, task: () => void) => {
+    loading.value[action] = true
+    error.value[action] = null
+
+    try {
+      await new Promise(resolve => setTimeout(resolve, 250))
+      task()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Something went wrong. Please try again.'
+      error.value[action] = message
+      throw err
+    } finally {
+      loading.value[action] = false
+    }
+  }
+
+  const addUser = async (user: GISUser) => {
     // In production: await api.post('/gis/users', user)
-    users.value.push(user)
+    await runAction('addUser', () => {
+      const policyNumber = normalizePolicyNumber(user.gisPolicyNumber)
+      const isDuplicate = users.value.some(
+        existingUser => normalizePolicyNumber(existingUser.gisPolicyNumber) === policyNumber
+      )
+
+      if (isDuplicate) {
+        throw new Error(`GIS policy number ${user.gisPolicyNumber} already exists.`)
+      }
+
+      users.value.push({
+        ...user,
+        empCode: user.empCode.trim(),
+        empName: user.empName.trim(),
+        gisPolicyNumber: policyNumber,
+      })
+    })
   }
 
   /**
    * Adds a monthly remittance record.
    * @param remittance GISRemittance object
    */
-  const addRemittance = (remittance: GISRemittance) => {
+  const addRemittance = async (remittance: GISRemittance) => {
     // In production: await api.post('/gis/remittances', remittance)
     // Normalize empCode to uppercase so search filtering always matches,
     // regardless of what case the user typed in the form.
-    remittances.value.push({ ...remittance, empCode: remittance.empCode.toUpperCase() })
+    await runAction('addRemittance', () => {
+      remittances.value.push({ ...remittance, empCode: remittance.empCode.toUpperCase() })
+    })
   }
 
   /**
    * Adds a cheque detail record.
    * @param cheque GISCheque object
    */
-  const addCheque = (cheque: GISCheque) => {
+  const addCheque = async (cheque: GISCheque) => {
     // In production: await api.post('/gis/cheques', cheque)
-    cheques.value.push(cheque)
+    await runAction('addCheque', () => {
+      cheques.value.push(cheque)
+    })
   }
 
   /**
    * Updates an existing user in the GIS database.
    * @param user GISUser object
    */
-  const updateUser = (user: GISUser) => {
+  const updateUser = async (user: GISUser) => {
     // In production: await api.put(`/gis/users/${user.empCode}/${user.gisPolicyNumber}`, user)
-    const index = users.value.findIndex(u => u.empCode === user.empCode && u.gisPolicyNumber === user.gisPolicyNumber)
-    if (index !== -1) {
-      users.value[index] = { ...user }
-    }
+    await runAction('updateUser', () => {
+      const policyNumber = normalizePolicyNumber(user.gisPolicyNumber)
+      const index = users.value.findIndex(
+        u => u.empCode === user.empCode && normalizePolicyNumber(u.gisPolicyNumber) === policyNumber
+      )
+      if (index === -1) {
+        throw new Error('Unable to find the selected GIS policy.')
+      }
+
+      const isDuplicate = users.value.some(
+        (existingUser, existingIndex) =>
+          existingIndex !== index &&
+          normalizePolicyNumber(existingUser.gisPolicyNumber) === policyNumber
+      )
+
+      if (isDuplicate) {
+        throw new Error(`GIS policy number ${user.gisPolicyNumber} already exists.`)
+      }
+
+      users.value[index] = {
+        ...user,
+        empCode: user.empCode.trim(),
+        empName: user.empName.trim(),
+        gisPolicyNumber: policyNumber,
+      }
+    })
   }
 
   // Return state and actions for components to use
@@ -129,6 +205,8 @@ export const useGISStore = defineStore('gis', () => {
     users,
     remittances,
     cheques,
+    loading,
+    error,
     addUser,
     updateUser,
     addRemittance,

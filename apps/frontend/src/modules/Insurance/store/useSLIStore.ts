@@ -38,6 +38,8 @@ export interface SLICheque {
   salaryMonth: string
 }
 
+type SLIAction = 'addUser' | 'updateUser' | 'addRemittance' | 'addCheque'
+
 export const useSLIStore = defineStore('sli', () => {
   // --- MOCK DATABASE TABLES ---
   
@@ -77,6 +79,20 @@ export const useSLIStore = defineStore('sli', () => {
   const storedCheques = localStorage.getItem('sli_cheques')
   const cheques = ref<SLICheque[]>(storedCheques ? JSON.parse(storedCheques) : [])
 
+  const loading = ref<Record<SLIAction, boolean>>({
+    addUser: false,
+    updateUser: false,
+    addRemittance: false,
+    addCheque: false,
+  })
+
+  const error = ref<Record<SLIAction, string | null>>({
+    addUser: null,
+    updateUser: null,
+    addRemittance: null,
+    addCheque: null,
+  })
+
   // --- LOCAL STORAGE PERSISTENCE ---
   watch(users, (state) => localStorage.setItem('sli_users', JSON.stringify(state)), { deep: true })
   watch(remittances, (state) => localStorage.setItem('sli_remittances', JSON.stringify(state)), { deep: true })
@@ -88,41 +104,101 @@ export const useSLIStore = defineStore('sli', () => {
    * Adds a new user to the SLI database.
    * @param user SLIUser object
    */
-  const addUser = (user: SLIUser) => {
+  const normalizePolicyNumber = (policyNumber: string) => policyNumber.trim().toUpperCase()
+
+  const runAction = async (action: SLIAction, task: () => void) => {
+    loading.value[action] = true
+    error.value[action] = null
+
+    try {
+      await new Promise(resolve => setTimeout(resolve, 250))
+      task()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Something went wrong. Please try again.'
+      error.value[action] = message
+      throw err
+    } finally {
+      loading.value[action] = false
+    }
+  }
+
+  const addUser = async (user: SLIUser) => {
     // In production: await api.post('/sli/users', user)
-    users.value.push(user)
+    await runAction('addUser', () => {
+      const policyNumber = normalizePolicyNumber(user.sliPolicyNumber)
+      const isDuplicate = users.value.some(
+        existingUser => normalizePolicyNumber(existingUser.sliPolicyNumber) === policyNumber
+      )
+
+      if (isDuplicate) {
+        throw new Error(`SLI policy number ${user.sliPolicyNumber} already exists.`)
+      }
+
+      users.value.push({
+        ...user,
+        empCode: user.empCode.trim(),
+        empName: user.empName.trim(),
+        sliPolicyNumber: policyNumber,
+      })
+    })
   }
 
   /**
    * Adds a monthly remittance record.
    * @param remittance SLIRemittance object
    */
-  const addRemittance = (remittance: SLIRemittance) => {
+  const addRemittance = async (remittance: SLIRemittance) => {
     // In production: await api.post('/sli/remittances', remittance)
     // Normalize empCode to uppercase so search filtering always matches,
     // regardless of what case the user typed in the form.
-    remittances.value.push({ ...remittance, empCode: remittance.empCode.toUpperCase() })
+    await runAction('addRemittance', () => {
+      remittances.value.push({ ...remittance, empCode: remittance.empCode.toUpperCase() })
+    })
   }
 
   /**
    * Adds a cheque detail record.
    * @param cheque SLICheque object
    */
-  const addCheque = (cheque: SLICheque) => {
+  const addCheque = async (cheque: SLICheque) => {
     // In production: await api.post('/sli/cheques', cheque)
-    cheques.value.push(cheque)
+    await runAction('addCheque', () => {
+      cheques.value.push(cheque)
+    })
   }
 
   /**
    * Updates an existing user in the SLI database.
    * @param user SLIUser object
    */
-  const updateUser = (user: SLIUser) => {
+  const updateUser = async (user: SLIUser) => {
     // In production: await api.put(`/sli/users/${user.empCode}/${user.sliPolicyNumber}`, user)
-    const index = users.value.findIndex(u => u.empCode === user.empCode && u.sliPolicyNumber === user.sliPolicyNumber)
-    if (index !== -1) {
-      users.value[index] = { ...user }
-    }
+    await runAction('updateUser', () => {
+      const policyNumber = normalizePolicyNumber(user.sliPolicyNumber)
+      const index = users.value.findIndex(
+        u => u.empCode === user.empCode && normalizePolicyNumber(u.sliPolicyNumber) === policyNumber
+      )
+      if (index === -1) {
+        throw new Error('Unable to find the selected SLI policy.')
+      }
+
+      const isDuplicate = users.value.some(
+        (existingUser, existingIndex) =>
+          existingIndex !== index &&
+          normalizePolicyNumber(existingUser.sliPolicyNumber) === policyNumber
+      )
+
+      if (isDuplicate) {
+        throw new Error(`SLI policy number ${user.sliPolicyNumber} already exists.`)
+      }
+
+      users.value[index] = {
+        ...user,
+        empCode: user.empCode.trim(),
+        empName: user.empName.trim(),
+        sliPolicyNumber: policyNumber,
+      }
+    })
   }
 
   // Return state and actions for components to use
@@ -130,6 +206,8 @@ export const useSLIStore = defineStore('sli', () => {
     users,
     remittances,
     cheques,
+    loading,
+    error,
     addUser,
     updateUser,
     addRemittance,
