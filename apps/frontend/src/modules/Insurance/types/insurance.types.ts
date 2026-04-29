@@ -4,6 +4,7 @@ export interface InsurancePolicyForm {
   empCode: string
   empName: string
   policyNumber: string
+  policyType?: 'SLI' | 'GIS'
   premium: number
   dateOfMaturity: string
 }

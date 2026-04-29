@@ -1,33 +1,13 @@
 <script setup lang="ts">
-/**
- * ============================================================================
- * InsurancePolicyModal.vue — Edit Existing User / Policy
- * ============================================================================
- * A dedicated modal for EDITING an existing employee's insurance policy details.
- * This is separate from the Add User modal so backend integration is clear:
- *
- * BACKEND TEAM:
- *   - This modal triggers an UPDATE / PUT operation.
- *   - Endpoint example: PUT /api/{moduleType}/users/{empCode}/{policyNumber}
- *   - Payload: { empCode, empName, policyNumber, premium, dateOfMaturity }
- *   - empCode and policyNumber are read-only (used as identifiers, not editable).
- *   - Wire the @submit handler in the parent page to call your API.
- * ============================================================================
- */
-
 import { ref, watch } from 'vue'
 import type { InsuranceModuleType, InsurancePolicyForm } from '../../types/insurance.types'
+import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 
 const props = defineProps<{
-  /** Controls modal visibility */
   isOpen: boolean
-  /** Which insurance scheme this modal is for ('SLI' or 'GIS') */
   moduleType: InsuranceModuleType
-  /** The existing user data to pre-populate the form with */
   userToEdit?: InsurancePolicyForm | null
-  /** Set to true while the parent is awaiting the API response */
   isSaving: boolean
-  /** Error message from the store / API to display inside the modal */
   error: string | null
 }>()
 
@@ -45,18 +25,24 @@ const emptyForm = (): InsurancePolicyForm => ({
 })
 
 const formData = ref<InsurancePolicyForm>(emptyForm())
+const showConfirm = ref(false)
 
-// Pre-populate form with existing user data when the modal opens
 watch(
   () => props.isOpen,
   (isOpen) => {
     if (isOpen && props.userToEdit) {
       formData.value = { ...props.userToEdit }
+      showConfirm.value = false
     }
   },
 )
 
-const handleSubmit = () => {
+const handleRequestSubmit = () => {
+  showConfirm.value = true
+}
+
+const handleConfirm = () => {
+  showConfirm.value = false
   emit('submit', { ...formData.value })
 }
 </script>
@@ -65,14 +51,13 @@ const handleSubmit = () => {
   <div v-if="isOpen" class="modal-overlay" @click.self="emit('close')">
     <div class="modal-content">
       <div class="modal-header">
-        <h2>Edit {{ moduleType }} User</h2>
+        <h2>Edit {{ moduleType }} Policy</h2>
         <button class="close-btn" :disabled="isSaving" @click="emit('close')">&times;</button>
       </div>
 
-      <form @submit.prevent="handleSubmit" class="modal-form">
+      <form @submit.prevent="handleRequestSubmit" class="modal-form">
         <p v-if="error" class="form-error">{{ error }}</p>
 
-        <!-- Employee Code & Policy Number are read-only identifiers in edit mode -->
         <div class="form-group">
           <label for="editUserEmpCode">Employee Code</label>
           <input
@@ -135,12 +120,22 @@ const handleSubmit = () => {
         <div class="modal-actions">
           <button type="button" class="btn-cancel" :disabled="isSaving" @click="emit('close')">Cancel</button>
           <button type="submit" class="btn-primary" :disabled="isSaving">
-            {{ isSaving ? 'Saving...' : 'Save Changes' }}
+            Save Changes
           </button>
         </div>
       </form>
     </div>
   </div>
+
+  <ConfirmDialog
+    :isOpen="showConfirm"
+    title="Confirm Edit Policy"
+    message="Are you sure you want to save these changes?"
+    confirmText="Yes, Save Changes"
+    :isSaving="isSaving"
+    @confirm="handleConfirm"
+    @cancel="showConfirm = false"
+  />
 </template>
 
 <style src="./modal-shared.css" />

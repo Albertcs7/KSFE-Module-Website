@@ -44,8 +44,7 @@ const router = createRouter({
  */
 const MODULE_REQUIREMENTS: Record<string, string> = {
   '/insurance': 'insuranceModule',
-  '/insurance/sli': 'insuranceModule',
-  '/insurance/gis': 'insuranceModule',
+  '/insurance/policies': 'insuranceModule',
   '/insurance/monthly-report': 'insuranceModule',
   // BACKEND TEAM: Add new module routes here as you add features
   // Example: '/payroll': 'payrollModule',

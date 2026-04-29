@@ -28,3 +28,10 @@ export const getSLIPolicies = () => {
 export const createPolicy = (data: CreatePolicyPayload) => {
   return api.post("/insurance/policies", data);
 };
+
+/**
+ * DELETE policy
+ */
+export const deletePolicy = (policyNo: string) => {
+  return api.delete(`/insurance/policies/${policyNo}`);
+};

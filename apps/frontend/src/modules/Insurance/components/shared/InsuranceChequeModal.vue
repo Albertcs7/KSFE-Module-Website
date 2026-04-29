@@ -2,6 +2,8 @@
 import { ref, watch } from 'vue'
 import type { InsuranceChequeForm } from '../../types/insurance.types'
 
+import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
+
 const props = defineProps<{
   isOpen: boolean
   isSaving: boolean
@@ -20,17 +22,24 @@ const emptyForm = (): InsuranceChequeForm => ({
 })
 
 const formData = ref<InsuranceChequeForm>(emptyForm())
+const showConfirm = ref(false)
 
 watch(
   () => props.isOpen,
   isOpen => {
     if (isOpen) {
       formData.value = emptyForm()
+      showConfirm.value = false
     }
   },
 )
 
-const handleSubmit = () => {
+const handleRequestSubmit = () => {
+  showConfirm.value = true
+}
+
+const handleConfirm = () => {
+  showConfirm.value = false
   emit('submit', { ...formData.value })
 }
 </script>
@@ -43,7 +52,7 @@ const handleSubmit = () => {
         <button class="close-btn" :disabled="isSaving" @click="emit('close')">&times;</button>
       </div>
 
-      <form @submit.prevent="handleSubmit" class="modal-form">
+      <form @submit.prevent="handleRequestSubmit" class="modal-form">
         <p v-if="error" class="form-error">{{ error }}</p>
 
         <div class="form-group">
@@ -64,12 +73,22 @@ const handleSubmit = () => {
         <div class="modal-actions">
           <button type="button" class="btn-cancel" :disabled="isSaving" @click="emit('close')">Cancel</button>
           <button type="submit" class="btn-primary" :disabled="isSaving">
-            {{ isSaving ? 'Saving...' : 'Save Cheque' }}
+            Save Cheque
           </button>
         </div>
       </form>
     </div>
   </div>
+
+  <ConfirmDialog
+    :isOpen="showConfirm"
+    title="Confirm Add Cheque"
+    message="Are you sure you want to add these cheque details?"
+    confirmText="Yes, Save Cheque"
+    :isSaving="isSaving"
+    @confirm="handleConfirm"
+    @cancel="showConfirm = false"
+  />
 </template>
 
 <style scoped>

@@ -46,16 +46,10 @@ const ALL_MODULES: VisibleModule[] = [
     requiresPermission: 'viewInsurance',
     children: [
       { 
-        label: 'SLI', 
-        path: '/insurance/sli', 
+        label: 'Policies', 
+        path: '/insurance/policies', 
         moduleName: 'insuranceModule', 
-        requiresPermission: 'viewSLI' 
-      },
-      { 
-        label: 'GIS', 
-        path: '/insurance/gis', 
-        moduleName: 'insuranceModule', 
-        requiresPermission: 'viewGIS' 
+        requiresPermission: 'viewInsurance' 
       },
       { 
         label: 'Monthly Report', 

@@ -1,33 +1,11 @@
 <script setup lang="ts">
-/**
- * ============================================================================
- * InsuranceAddUserModal.vue — Add New User / Policy
- * ============================================================================
- * A dedicated modal for enrolling a NEW employee into an insurance scheme.
- * This is separate from the Edit modal so backend integration is clear:
- *
- * BACKEND TEAM:
- *   - This modal triggers a CREATE / POST operation.
- *   - Endpoint example: POST /api/{moduleType}/users
- *   - Payload: { empCode, empName, policyNumber, premium, dateOfMaturity }
- *   - Wire the @submit handler in the parent page to call your API.
- * ============================================================================
- */
-
 import { ref, watch } from "vue";
-import type {
-  InsuranceModuleType,
-  InsurancePolicyForm,
-} from "../../types/insurance.types";
+import type { InsurancePolicyForm } from "../../types/insurance.types";
+import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
 
 const props = defineProps<{
-  /** Controls modal visibility */
   isOpen: boolean;
-  /** Which insurance scheme this modal is for ('SLI' or 'GIS') */
-  moduleType: InsuranceModuleType;
-  /** Set to true while the parent is awaiting the API response */
   isSaving: boolean;
-  /** Error message from the store / API to display inside the modal */
   error: string | null;
 }>();
 
@@ -40,28 +18,35 @@ const emptyForm = (): InsurancePolicyForm => ({
   empCode: "",
   empName: "",
   policyNumber: "",
+  policyType: "SLI",
   premium: 0,
   dateOfMaturity: "",
 });
 
 const formData = ref<InsurancePolicyForm>(emptyForm());
+const showConfirm = ref(false);
 
-// Reset form every time the modal opens
 watch(
   () => props.isOpen,
   (isOpen) => {
     if (isOpen) {
       formData.value = emptyForm();
+      showConfirm.value = false;
     }
   }
 );
 
-const handleSubmit = () => {
-  // Basic validation (UI level only)
+const handleRequestSubmit = () => {
   if (!formData.value.empCode || !formData.value.empName) return;
   if (!formData.value.policyNumber) return;
   if (!formData.value.premium || formData.value.premium <= 0) return;
+  if (!formData.value.policyType) return;
+  
+  showConfirm.value = true;
+};
 
+const handleConfirm = () => {
+  showConfirm.value = false;
   emit("submit", { ...formData.value });
 };
 </script>
@@ -70,13 +55,13 @@ const handleSubmit = () => {
   <div v-if="isOpen" class="modal-overlay" @click.self="emit('close')">
     <div class="modal-content">
       <div class="modal-header">
-        <h2>Add New {{ moduleType }} User</h2>
+        <h2>Add New Policy</h2>
         <button class="close-btn" :disabled="isSaving" @click="emit('close')">
           &times;
         </button>
       </div>
 
-      <form @submit.prevent="handleSubmit" class="modal-form">
+      <form @submit.prevent="handleRequestSubmit" class="modal-form">
         <p v-if="error" class="form-error">{{ error }}</p>
 
         <div class="form-group">
@@ -103,12 +88,20 @@ const handleSubmit = () => {
         </div>
 
         <div class="form-group">
-          <label for="addUserPolicyNumber">{{ moduleType }} Policy Number</label>
+          <label for="addUserPolicyType">Policy Type</label>
+          <select id="addUserPolicyType" v-model="formData.policyType" required>
+            <option value="SLI">SLI</option>
+            <option value="GIS">GIS</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="addUserPolicyNumber">Policy Number</label>
           <input
             id="addUserPolicyNumber"
             v-model="formData.policyNumber"
             type="text"
-            :placeholder="`e.g. ${moduleType}-1234`"
+            :placeholder="`e.g. 1234`"
             required
           />
         </div>
@@ -144,12 +137,24 @@ const handleSubmit = () => {
             Cancel
           </button>
           <button type="submit" class="btn-primary" :disabled="isSaving">
-            {{ isSaving ? "Saving..." : "Add User" }}
+            Add Policy
           </button>
         </div>
       </form>
     </div>
   </div>
+
+  <ConfirmDialog
+    :isOpen="showConfirm"
+    title="Confirm Add Policy"
+    message="Are you sure you want to add this policy?"
+    confirmText="Yes, Add Policy"
+    :isSaving="isSaving"
+    @confirm="handleConfirm"
+    @cancel="showConfirm = false"
+  />
 </template>
+
+<style src="./modal-shared.css" />
 
 <style src="./modal-shared.css" />

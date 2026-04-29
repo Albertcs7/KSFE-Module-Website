@@ -5,10 +5,11 @@ import type {
   InsurancePolicyOption,
   InsuranceRemittanceForm,
 } from '../../types/insurance.types'
+import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 
 const props = defineProps<{
   isOpen: boolean
-  moduleType: InsuranceModuleType
+  moduleType?: InsuranceModuleType
   policyMode: 'select' | 'auto'
   policies: InsurancePolicyOption[]
   isSaving: boolean
@@ -30,6 +31,7 @@ const emptyForm = (): InsuranceRemittanceForm => ({
 })
 
 const formData = ref<InsuranceRemittanceForm>(emptyForm())
+const showConfirm = ref(false)
 
 const availablePolicies = computed(() => {
   if (!formData.value.empCode) return []
@@ -45,6 +47,7 @@ watch(
   isOpen => {
     if (isOpen) {
       formData.value = emptyForm()
+      showConfirm.value = false
     }
   },
 )
@@ -58,7 +61,12 @@ watch(
   },
 )
 
-const handleSubmit = () => {
+const handleRequestSubmit = () => {
+  showConfirm.value = true
+}
+
+const handleConfirm = () => {
+  showConfirm.value = false
   emit('submit', { ...formData.value })
 }
 </script>
@@ -79,7 +87,7 @@ const handleSubmit = () => {
         </div>
       </div>
 
-      <form @submit.prevent="handleSubmit" class="modal-form">
+      <form @submit.prevent="handleRequestSubmit" class="modal-form">
         <p v-if="error" class="form-error">{{ error }}</p>
 
         <div class="form-group">
@@ -88,7 +96,7 @@ const handleSubmit = () => {
         </div>
 
         <div class="form-group">
-          <label for="remitPolicyNumber">{{ moduleType }} Policy Number</label>
+          <label for="remitPolicyNumber">Policy Number</label>
 
           <select
             v-if="policyMode === 'select' && availablePolicies.length > 0"
@@ -108,7 +116,7 @@ const handleSubmit = () => {
             v-model="formData.policyNumber"
             type="text"
             :readonly="policyMode === 'auto'"
-            :placeholder="policyMode === 'auto' ? 'Auto-filled when employee code is entered' : `e.g. ${moduleType}-1234`"
+            :placeholder="policyMode === 'auto' ? 'Auto-filled when employee code is entered' : `e.g. 1234`"
             required
           />
 
@@ -143,12 +151,22 @@ const handleSubmit = () => {
         <div class="modal-actions">
           <button type="button" class="btn-cancel" :disabled="isSaving" @click="emit('close')">Cancel</button>
           <button type="submit" class="btn-primary" :disabled="isSaving">
-            {{ isSaving ? 'Adding...' : 'Add Remittance' }}
+            Add Remittance
           </button>
         </div>
       </form>
     </div>
   </div>
+
+  <ConfirmDialog
+    :isOpen="showConfirm"
+    title="Confirm Add Remittance"
+    message="Are you sure you want to add this remittance?"
+    confirmText="Yes, Add Remittance"
+    :isSaving="isSaving"
+    @confirm="handleConfirm"
+    @cancel="showConfirm = false"
+  />
 </template>
 
 <style scoped>

@@ -3,8 +3,7 @@ import type { RouteRecordRaw } from 'vue-router'
 import InsuranceLayout from '../modules/Insurance/layout/InsuranceLayout.vue'
 import InsurancePage from '../modules/Insurance/pages/InsurancePage.vue'
 import InsuranceOptionPage from '../modules/Insurance/pages/InsuranceOptionPage.vue'
-import SLIPage from '../modules/Insurance/pages/SLIPage.vue'
-import GISPage from '../modules/Insurance/pages/GISPage.vue'
+import PoliciesPage from '../modules/Insurance/pages/PoliciesPage.vue'
 import MonthlyReportPage from '../modules/Insurance/pages/MonthlyReportPage.vue'
 import LoginPage from './pages/LoginPage.vue'
 import UnauthorizedPage from './pages/UnauthorizedPage.vue'
@@ -34,14 +33,9 @@ export const appRoutes: RouteRecordRaw[] = [
       component:InsurancePage,
      },
      {
-      path:'sli',
-      name:'insurance-sli',
-      component:SLIPage,
-     },
-     {
-      path:'gis',
-      name:'insurance-gis',
-      component:GISPage,
+      path:'policies',
+      name:'insurance-policies',
+      component:PoliciesPage,
      },
      {
       path:'monthly-report',
