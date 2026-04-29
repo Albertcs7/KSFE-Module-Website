@@ -5,16 +5,6 @@ import { db } from "./database/mysql";
 
 const server = createApp();
 
-const startServer = async () => {
-  await testDB(); // ensure DB works first
-
-  server.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
-  });
-};
-
-startServer();
-
 //TESTING DB connection
 const testDB = async () => {
   try {
@@ -25,3 +15,13 @@ const testDB = async () => {
     console.error("❌ DB Connection Failed", err);
   }
 };
+
+const startServer = async () => {
+  await testDB(); // ensure DB works first
+
+  server.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+  });
+};
+
+startServer();

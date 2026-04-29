@@ -401,7 +401,7 @@ const handleFileUpload = (event: Event) => {
   border-radius: 10px;
   margin-bottom: 2rem;
   border: 1px solid #e2e8f0;
-  justify-content: space-between;
+  justify-content: flex-start;
 }
 
 .emp-avatar {
