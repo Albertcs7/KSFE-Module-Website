@@ -7,10 +7,11 @@
  * and handles data display for a selected employee.
  */
 
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useSLIStore, type SLICheque, type SLIRemittance, type SLIUser } from '../store/useSLIStore'
 import SearchBar, { type SearchBarItem } from '../../../components/searchBar/SearchBar.vue'
 import { useToast } from '../../../composables/useToast'
+import { createPolicy, getSLIPolicies } from '@/services/api/insurance.api'
 import type {
   InsuranceChequeForm,
   InsurancePolicyForm,
@@ -27,6 +28,35 @@ import ExportReportModal from '../components/ExportReportModal.vue'
 
 const sliStore = useSLIStore()
 const toast = useToast()
+
+// --- BACKEND DATA STATE ---
+const sliUsers = ref<SLIUser[]>([])
+const isLoadingUsers = ref(false)
+const loadError = ref('')
+
+const fetchSLIUsers = async () => {
+  isLoadingUsers.value = true
+  loadError.value = ''
+  try {
+    const res = await getSLIPolicies()
+    const data = Array.isArray(res.data) ? res.data : res.data.data || []
+    sliUsers.value = data.map((p: any) => ({
+      empCode: String(p.employee_code || p.empCode),
+      empName: p.employee_name || p.empName,
+      sliPolicyNumber: p.policy_no || p.sliPolicyNumber,
+      premium: p.premium || 0,
+      dateOfMaturity: p.maturity_date || p.dateOfMaturity,
+    }))
+  } catch (err) {
+    console.error('Failed to fetch SLI users', err)
+    loadError.value = 'Failed to load SLI policies'
+    toast.error(loadError.value)
+  } finally {
+    isLoadingUsers.value = false
+  }
+}
+
+onMounted(() => fetchSLIUsers())
 
 // --- MODAL STATE MANAGEMENT ---
 // These refs control the visibility of the different pop-up modals
@@ -52,7 +82,7 @@ const selectedEmpCode = ref<string | null>(null)
 const searchItems = computed<SearchBarItem[]>(() => {
   // Deduplicate by empCode for the search bar so it only shows unique employees
   const uniqueEmps = new Map()
-  sliStore.users.forEach(user => {
+  sliUsers.value.forEach(user => {
     const code = user.empCode.toUpperCase()
     if (!uniqueEmps.has(code)) {
       uniqueEmps.set(code, user)
@@ -81,7 +111,7 @@ const clearSelection = () => {
 const displayedUsers = computed(() => {
   if (selectedEmpCode.value) {
     const searchCode = selectedEmpCode.value.toUpperCase()
-    const userPolicies = sliStore.users.filter(u => u.empCode.toUpperCase() === searchCode)
+    const userPolicies = sliUsers.value.filter(u => u.empCode.toUpperCase() === searchCode)
     
     // Deduplicate by policy number to ensure uniqueness
     const uniquePolicies = new Map<string, SLIUser>()
@@ -97,7 +127,7 @@ const displayedUsers = computed(() => {
 const selectedEmpName = computed(() => {
   if (!selectedEmpCode.value) return ''
   const searchCode = selectedEmpCode.value.toUpperCase()
-  const user = sliStore.users.find(u => u.empCode.toUpperCase() === searchCode)
+  const user = sliUsers.value.find(u => u.empCode.toUpperCase() === searchCode)
   return user ? user.empName : ''
 })
 
@@ -111,7 +141,7 @@ const displayedRemittances = computed(() => {
 })
 
 const policyOptions = computed<InsurancePolicyOption[]>(() =>
-  sliStore.users.map(user => ({
+  sliUsers.value.map(user => ({
     empCode: user.empCode,
     empName: user.empName,
     policyNumber: user.sliPolicyNumber,
@@ -173,10 +203,23 @@ const toSLICheque = (cheque: InsuranceChequeForm): SLICheque => ({
 
 const handleAddUser = async (user: InsurancePolicyForm) => {
   try {
-    await sliStore.addUser(toSLIUser(user))
+    const payload = {
+      employee_code: Number(user.empCode),
+      employee_name: user.empName,
+      policy_no: user.policyNumber,
+      policy_type: "SLI" as const,
+      premium: Number(user.premium),
+      maturity_date: user.dateOfMaturity,
+    }
+
+    await createPolicy(payload)
+    // Refresh from backend
+    await fetchSLIUsers()
+
     isAddSLIOpen.value = false
     toast.success('User added successfully!')
-  } catch {
+  } catch (err) {
+    console.error(err)
     toast.error(sliStore.error.addUser || 'Unable to add user. Please try again.')
   }
 }
@@ -184,6 +227,8 @@ const handleAddUser = async (user: InsurancePolicyForm) => {
 const handleUpdateUser = async (user: InsurancePolicyForm) => {
   try {
     await sliStore.updateUser(toSLIUser(user))
+    // refresh list from backend
+    await fetchSLIUsers()
     isEditUserOpen.value = false
     toast.success('User details updated successfully!')
   } catch {
@@ -243,7 +288,7 @@ const handleFileUpload = (event: Event) => {
       let count = 0
       const duplicatePolicyNumbers = new Set<string>()
       const existingPolicyNumbers = new Set(
-        sliStore.users.map(user => user.sliPolicyNumber.trim().toUpperCase())
+        sliUsers.value.map(user => user.sliPolicyNumber.trim().toUpperCase())
       )
 
       lines.forEach((line, index) => {
@@ -258,13 +303,13 @@ const handleFileUpload = (event: Event) => {
             return
           }
 
-          sliStore.users.push({
+           sliUsers.value.push({
              empCode: parts[0]?.trim() || '',
              empName: parts[1]?.trim() || '',
              sliPolicyNumber: policyNumber,
              premium: Number(parts[3]) || 0,
              dateOfMaturity: parts[4]?.trim() || ''
-          })
+           })
           existingPolicyNumbers.add(policyNumber)
           count++
         }

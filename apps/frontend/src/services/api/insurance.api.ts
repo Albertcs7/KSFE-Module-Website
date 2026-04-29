@@ -16,6 +16,13 @@ export const getGISPolicies = () => {
 };
 
 /**
+ * GET SLI policies (filters by policy_type=SLI)
+ */
+export const getSLIPolicies = () => {
+  return api.get("/insurance/policies?policy_type=SLI");
+};
+
+/**
  * CREATE new policy
  */
 export const createPolicy = (data: CreatePolicyPayload) => {
