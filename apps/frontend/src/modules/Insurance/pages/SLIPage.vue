@@ -20,6 +20,7 @@ import type {
 
 // Import Modals for SLI Actions
 import InsuranceChequeModal from '../components/shared/InsuranceChequeModal.vue'
+import InsuranceAddUserModal from '../components/shared/InsuranceAddUserModal.vue'
 import InsurancePolicyModal from '../components/shared/InsurancePolicyModal.vue'
 import InsuranceRemittanceModal from '../components/shared/InsuranceRemittanceModal.vue'
 import ExportReportModal from '../components/ExportReportModal.vue'
@@ -435,9 +436,8 @@ const handleFileUpload = (event: Event) => {
       MODAL COMPONENTS 
       These are mounted but hidden until their respective 'isOpen' prop becomes true.
     -->
-    <InsurancePolicyModal
+    <InsuranceAddUserModal
       :is-open="isAddSLIOpen"
-      mode="add"
       module-type="SLI"
       :is-saving="sliStore.loading.addUser"
       :error="sliStore.error.addUser"
@@ -463,7 +463,6 @@ const handleFileUpload = (event: Event) => {
     />
     <InsurancePolicyModal
       :is-open="isEditUserOpen"
-      mode="edit"
       module-type="SLI"
       :user-to-edit="userToEditForm"
       :is-saving="sliStore.loading.updateUser"

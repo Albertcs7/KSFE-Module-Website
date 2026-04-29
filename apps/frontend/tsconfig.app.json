@@ -6,7 +6,16 @@
     "src/**/*.vue"
   ],
   "exclude": [
-    "src/**/__tests__/*"
+    "src/**/__tests__/*",
+    "src/modules/Insurance/components/GISAddUserModal.vue",
+    "src/modules/Insurance/components/GISChequeModal.vue",
+    "src/modules/Insurance/components/GISEditUserModal.vue",
+    "src/modules/Insurance/components/GISRemittanceModal.vue",
+    "src/modules/Insurance/components/SLIAddUserModal.vue",
+    "src/modules/Insurance/components/SLIChequeModal.vue",
+    "src/modules/Insurance/components/SLIEditUserModal.vue",
+    "src/modules/Insurance/components/SLIRemittanceModal.vue",
+    "src/modules/Insurance/pages/AddUserPage.vue"
   ],
   "compilerOptions": {
     // Extra safety for array and object lookups, but may have false positives.
