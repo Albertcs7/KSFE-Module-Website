@@ -14,48 +14,56 @@
  * ============================================================================
  */
 
-import { ref, watch } from 'vue'
-import type { InsuranceModuleType, InsurancePolicyForm } from '../../types/insurance.types'
+import { ref, watch } from "vue";
+import type {
+  InsuranceModuleType,
+  InsurancePolicyForm,
+} from "../../types/insurance.types";
 
 const props = defineProps<{
   /** Controls modal visibility */
-  isOpen: boolean
+  isOpen: boolean;
   /** Which insurance scheme this modal is for ('SLI' or 'GIS') */
-  moduleType: InsuranceModuleType
+  moduleType: InsuranceModuleType;
   /** Set to true while the parent is awaiting the API response */
-  isSaving: boolean
+  isSaving: boolean;
   /** Error message from the store / API to display inside the modal */
-  error: string | null
-}>()
+  error: string | null;
+}>();
 
 const emit = defineEmits<{
-  (e: 'close'): void
-  (e: 'submit', value: InsurancePolicyForm): void
-}>()
+  (e: "close"): void;
+  (e: "submit", value: InsurancePolicyForm): void;
+}>();
 
 const emptyForm = (): InsurancePolicyForm => ({
-  empCode: '',
-  empName: '',
-  policyNumber: '',
+  empCode: "",
+  empName: "",
+  policyNumber: "",
   premium: 0,
-  dateOfMaturity: '',
-})
+  dateOfMaturity: "",
+});
 
-const formData = ref<InsurancePolicyForm>(emptyForm())
+const formData = ref<InsurancePolicyForm>(emptyForm());
 
 // Reset form every time the modal opens
 watch(
   () => props.isOpen,
   (isOpen) => {
     if (isOpen) {
-      formData.value = emptyForm()
+      formData.value = emptyForm();
     }
-  },
-)
+  }
+);
 
 const handleSubmit = () => {
-  emit('submit', { ...formData.value })
-}
+  // Basic validation (UI level only)
+  if (!formData.value.empCode || !formData.value.empName) return;
+  if (!formData.value.policyNumber) return;
+  if (!formData.value.premium || formData.value.premium <= 0) return;
+
+  emit("submit", { ...formData.value });
+};
 </script>
 
 <template>
@@ -63,7 +71,9 @@ const handleSubmit = () => {
     <div class="modal-content">
       <div class="modal-header">
         <h2>Add New {{ moduleType }} User</h2>
-        <button class="close-btn" :disabled="isSaving" @click="emit('close')">&times;</button>
+        <button class="close-btn" :disabled="isSaving" @click="emit('close')">
+          &times;
+        </button>
       </div>
 
       <form @submit.prevent="handleSubmit" class="modal-form">
@@ -107,7 +117,7 @@ const handleSubmit = () => {
           <label for="addUserPremium">Premium (Amount)</label>
           <input
             id="addUserPremium"
-            v-model="formData.premium"
+            v-model.number="formData.premium"
             type="number"
             placeholder="0.00"
             required
@@ -125,9 +135,16 @@ const handleSubmit = () => {
         </div>
 
         <div class="modal-actions">
-          <button type="button" class="btn-cancel" :disabled="isSaving" @click="emit('close')">Cancel</button>
+          <button
+            type="button"
+            class="btn-cancel"
+            :disabled="isSaving"
+            @click="emit('close')"
+          >
+            Cancel
+          </button>
           <button type="submit" class="btn-primary" :disabled="isSaving">
-            {{ isSaving ? 'Saving...' : 'Add User' }}
+            {{ isSaving ? "Saving..." : "Add User" }}
           </button>
         </div>
       </form>
