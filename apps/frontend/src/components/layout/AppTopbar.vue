@@ -29,6 +29,7 @@ const firstName = computed(() => {
 
 const handleLogout = async () => {
   await authStore.logout();
+  router.push("/login");
 };
 
 const roleLabel = computed(() => authStore.roleName || "Employee");

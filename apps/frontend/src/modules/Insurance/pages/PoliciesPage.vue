@@ -67,7 +67,6 @@ const fetchPolicies = async (empCode?: string) => {
   } catch (err) {
     console.error('Failed to fetch policies', err)
     loadError.value = 'Failed to load policies'
-    toast.error(loadError.value)
   } finally {
     isLoadingUsers.value = false
   }
