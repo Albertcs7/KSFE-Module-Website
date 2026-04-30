@@ -2,9 +2,12 @@ import api from "../http/axios";
 import type { CreatePolicyPayload } from "../types/insurance.types";
 
 /**
- * GET all policies
+ * GET  policies by employee code
  */
-export const getPolicies = () => {
+export const getPolicies = (empCode?: string) => {
+  if (empCode && empCode.trim() !== '') {
+    return api.get(`/insurance/policies?employee_code=${empCode}`);
+  }
   return api.get("/insurance/policies");
 };
 

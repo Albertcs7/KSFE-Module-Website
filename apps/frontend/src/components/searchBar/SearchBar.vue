@@ -1,79 +1,83 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+
+const query = ref("");
+
+watch(query, (newValue) => {
+  emit("input", newValue);
+});
 
 export interface SearchBarItem {
-  label: string
-  path: string
-  description?: string
+  label: string;
+  path: string;
+  description?: string;
 }
 
 interface SearchBarProps {
-  items: SearchBarItem[]
-  placeholder?: string
+  items: SearchBarItem[];
+  placeholder?: string;
 }
 
 const props = withDefaults(defineProps<SearchBarProps>(), {
-  placeholder: 'Search ...',
-})
+  placeholder: "Search ...",
+});
 
 const emit = defineEmits<{
-  (e: 'select', item: SearchBarItem): void
-}>()
+  (e: "select", item: SearchBarItem): void;
+  (e: "input", value: string): void;
+}>();
 
-const query = ref('')
-const isOpen = ref(false)
-const rootRef = ref<HTMLElement | null>(null)
+const isOpen = ref(false);
+const rootRef = ref<HTMLElement | null>(null);
 
-const normalizedQuery = computed(() => query.value.trim().toLowerCase())
+const normalizedQuery = computed(() => query.value.trim().toLowerCase());
 
 const filteredItems = computed(() => {
   // Show nothing until at least 2 characters are typed
   if (normalizedQuery.value.length < 2) {
-    return []
+    return [];
   }
 
-  const prefix = normalizedQuery.value.slice(0, 2)
-
   return props.items.filter((item) => {
-    // Only show items whose label starts with the same first 2 characters
-    return item.label.toLowerCase().startsWith(prefix)
-  })
-})
+    // Only show items whose label matches the full typed code prefix
+    return item.label.toLowerCase().startsWith(normalizedQuery.value);
+  });
+});
 
-const showDropdown = computed(() => isOpen.value)
+const showDropdown = computed(() => isOpen.value);
 
 const onFocus = (): void => {
-  isOpen.value = true
-}
+  isOpen.value = true;
+};
 
 const onSelect = (item: SearchBarItem): void => {
-  query.value = item.label
-  isOpen.value = false
-  emit('select', item)
-}
+  query.value = item.label;
+  isOpen.value = false;
+  emit("select", item);
+};
 
 const onEscape = (): void => {
-  isOpen.value = false
-}
+  isOpen.value = false;
+};
 
 const closeOnOutsideClick = (event: MouseEvent): void => {
   if (!rootRef.value) {
-    return
+    return;
   }
 
-  const target = event.target as Node
+  const target = event.target as Node;
   if (!rootRef.value.contains(target)) {
-    isOpen.value = false
+    isOpen.value = false;
   }
-}
+};
 
 onMounted(() => {
-  document.addEventListener('click', closeOnOutsideClick)
-})
+  document.addEventListener("click", closeOnOutsideClick);
+});
 
 onBeforeUnmount(() => {
-  document.removeEventListener('click', closeOnOutsideClick)
-})
+  document.removeEventListener("click", closeOnOutsideClick);
+});
 </script>
 
 <template>

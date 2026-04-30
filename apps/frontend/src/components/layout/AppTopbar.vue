@@ -27,13 +27,12 @@ const firstName = computed(() => {
   return fullName ? fullName.split(" ")[0] ?? "User" : "User";
 });
 
+const handleLogout = async () => {
+  await authStore.logout();
+};
+
 const roleLabel = computed(() => authStore.roleName || "Employee");
 const initials = computed(() => firstName.value.charAt(0).toUpperCase());
-
-const logout = async (): Promise<void> => {
-  await authStore.logout();
-  router.push("/login");
-};
 </script>
 
 <template>
@@ -61,18 +60,11 @@ const logout = async (): Promise<void> => {
           <small>{{ roleLabel }}</small>
         </span>
       </button>
-
-      <button
-        id="topbar-logout"
-        class="logout-btn"
-        type="button"
-        title="Sign out"
-        @click="logout"
-      >
-        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-          <polyline points="16 17 21 12 16 7" />
-          <line x1="21" y1="12" x2="9" y2="12" />
+      <button class="logout-btn" @click="handleLogout" title="Logout" aria-label="Logout">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+          <polyline points="16 17 21 12 16 7"></polyline>
+          <line x1="21" y1="12" x2="9" y2="12"></line>
         </svg>
       </button>
     </div>
@@ -191,35 +183,27 @@ const logout = async (): Promise<void> => {
 }
 
 .logout-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 2.35rem;
   height: 2.35rem;
+  border-radius: 0.75rem;
   border: 1px solid rgba(148, 163, 184, 0.2);
-  border-radius: 0.65rem;
   background: #fff;
-  color: #64748b;
-  display: grid;
-  place-items: center;
+  color: #ef4444;
   cursor: pointer;
-  transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease,
-    transform 0.2s ease;
-  flex-shrink: 0;
+  transition: all 0.2s ease;
 }
 
 .logout-btn:hover {
-  color: #dc2626;
-  border-color: rgba(220, 38, 38, 0.3);
   background: #fef2f2;
+  border-color: #fca5a5;
   transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.1);
 }
 
-.logout-btn svg {
-  width: 1rem;
-  height: 1rem;
-  stroke: currentColor;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
+
 
 @media (max-width: 639px) {
   .topbar {

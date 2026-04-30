@@ -2,7 +2,6 @@
 import { computed, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { getVisibleModules } from "../../modules";
-import { useAuthStore } from "../../store/auth.store";
 
 interface SidebarProps {
   collapsed?: boolean;
@@ -29,7 +28,6 @@ const emit = defineEmits<{
 
 const route = useRoute();
 const router = useRouter();
-const authStore = useAuthStore();
 
 // Only show modules the current user has access to.
 // Reactive — updates automatically when auth state changes.
@@ -63,14 +61,6 @@ const isActive = (path: string): boolean => {
 };
 
 const handleMenuClick = (): void => {
-  if (props.isMobile) {
-    emit("close-mobile");
-  }
-};
-
-const handleLogout = (): void => {
-  authStore.logout();
-  router.push('/login');
   if (props.isMobile) {
     emit("close-mobile");
   }
@@ -205,18 +195,7 @@ const handleLogout = (): void => {
         </div>
       </nav>
 
-      <div class="sidebar-footer">
-        <button class="menu-link logout-btn" @click="handleLogout">
-          <span class="menu-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-              <polyline points="16 17 21 12 16 7"></polyline>
-              <line x1="21" y1="12" x2="9" y2="12"></line>
-            </svg>
-          </span>
-          <span class="menu-label">Logout</span>
-        </button>
-      </div>
+
     </div>
   </aside>
 </template>
@@ -343,16 +322,6 @@ const handleLogout = (): void => {
   white-space: nowrap;
 }
 
-.sidebar-card {
-  margin-top: auto;
-  padding: 1rem;
-  border-radius: 0.8rem;
-  background: rgba(255, 255, 255, 0.14);
-  color: #f4fbf0;
-  box-shadow: inset 0 0 0 1px rgba(198, 234, 169, 0.15);
-  transition: opacity 0.2s ease;
-}
-
 /* ── Smooth Collapse Transitions ── */
 .brand-copy,
 .menu-title,
@@ -362,36 +331,13 @@ const handleLogout = (): void => {
 }
 
 .sidebar.collapsed:not(.mobile) .brand-copy,
-.sidebar.collapsed:not(.mobile) .menu-label,
-.sidebar.collapsed:not(.mobile) .sidebar-card {
+.sidebar.collapsed:not(.mobile) .menu-label {
   opacity: 0;
   pointer-events: none;
 }
 
 .sidebar.collapsed:not(.mobile) .menu-link {
   padding-left: 1.3rem; /* centers the icon within the 96px width */
-}
-
-.sidebar-card small,
-.sidebar-card strong,
-.sidebar-card p {
-  display: block;
-}
-
-.sidebar-card small {
-  margin-bottom: 0.35rem;
-  color: rgba(219, 234, 254, 0.82);
-}
-
-.sidebar-card strong {
-  margin-bottom: 0.45rem;
-}
-
-.sidebar-card p {
-  margin: 0;
-  color: rgba(239, 246, 255, 0.88);
-  line-height: 1.5;
-  font-size: 0.82rem;
 }
 
 .menu-group {
@@ -450,31 +396,7 @@ const handleLogout = (): void => {
   display: none;
 }
 
-.sidebar-footer {
-  margin-top: auto;
-  padding-top: 1rem;
-  border-top: 1px solid rgba(198, 234, 169, 0.18);
-}
 
-.logout-btn {
-  width: 100%;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  text-align: left;
-  font-family: inherit;
-  font-size: inherit;
-  color: #f87171;
-}
-
-.logout-btn:hover {
-  background: rgba(239, 68, 68, 0.1);
-  color: #fca5a5;
-}
-
-.logout-btn .menu-icon svg {
-  stroke: currentColor;
-}
 
 @media (max-width: 959px) {
   .sidebar {
