@@ -1,5 +1,4 @@
-import { getAllPoliciesRepo } from "./insurance.repository";
-import { createPolicyRepo } from "./insurance.repository";
+import { getAllPoliciesRepo,searchPoliciesRepo, searchPoliciesCountRepo,createPolicyRepo } from "./insurance.repository";
 
 /* 
   VIEWING THE EMPLOYEE POLICIES
@@ -10,6 +9,31 @@ export const getAllPoliciesService = async () => {
   // later: validations, transformations, business rules
 
   return policies;
+};
+
+/*SEARCHING BY EMPLOYEE CODE*/
+
+export const searchPoliciesService = async (params: {
+  empCode?: string;
+  empName?: string;
+  policyNo?: string;
+  limit?: number;
+  offset?: number;
+}) => {
+  // Validate inputs
+  if (!params.empCode && !params.empName && !params.policyNo) {
+    throw new Error("Please provide at least one search parameter (empCode, empName, or policyNo)");
+  }
+
+  const policies = await searchPoliciesRepo(params);
+  const total = await searchPoliciesCountRepo(params);
+
+  return {
+    data: policies,
+    total,
+    limit: params.limit || 100,
+    offset: params.offset || 0,
+  };
 };
 
 /* 

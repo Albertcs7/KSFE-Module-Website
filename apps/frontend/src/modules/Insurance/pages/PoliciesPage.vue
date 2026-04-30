@@ -7,7 +7,7 @@
  * and handles data display for a selected employee.
  */
 
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useSLIStore } from '../store/useSLIStore'
 import { useGISStore } from '../store/useGISStore'
 import SearchBar, { type SearchBarItem } from '../../../components/searchBar/SearchBar.vue'
@@ -49,13 +49,13 @@ const policies = ref<UserPolicy[]>([])
 const isLoadingUsers = ref(false)
 const loadError = ref('')
 
-const fetchPolicies = async () => {
+const fetchPolicies = async (empCode?: string) => {
   isLoadingUsers.value = true
   loadError.value = ''
   try {
-    const res = await getPolicies()
+    const res = await getPolicies(empCode)
     const data = Array.isArray(res.data) ? res.data : res.data.data || []
-    
+
     policies.value = data.map((p: any) => ({
       empCode: String(p.employee_code || p.empCode),
       empName: p.employee_name || p.empName,
@@ -90,6 +90,8 @@ const isDeleting = ref(false)
 
 // --- SEARCH & FILTER STATE ---
 const selectedEmpCode = ref<string | null>(null)
+const searchQuery = ref('')
+let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
 const searchItems = computed<SearchBarItem[]>(() => {
   const uniqueEmps = new Map()
@@ -99,28 +101,46 @@ const searchItems = computed<SearchBarItem[]>(() => {
       uniqueEmps.set(code, user)
     }
   })
-  
+
   return Array.from(uniqueEmps.values()).map(user => ({
     label: user.empCode.toUpperCase(),
     description: user.empName,
-    path: '' 
+    path: ''
   }))
 })
 
 const handleSearchSelect = (item: SearchBarItem) => {
   selectedEmpCode.value = item.label
 }
+const handleSearchInput = (value: string) => {
+  searchQuery.value = value
+}
 
 const clearSelection = () => {
   selectedEmpCode.value = null
 }
+
+watch(searchQuery, (val) => {
+  if (debounceTimer) {
+    clearTimeout(debounceTimer)
+  }
+
+  debounceTimer = setTimeout(async () => {
+    if (!val || val.trim().length < 2) {
+      await fetchPolicies() // reset to all
+      return
+    }
+
+    await fetchPolicies(val)
+  }, 400)
+})
 
 // --- DATA COMPUTATION FOR TABLES ---
 const displayedUsers = computed(() => {
   if (selectedEmpCode.value) {
     const searchCode = selectedEmpCode.value.toUpperCase()
     const userPolicies = policies.value.filter(u => u.empCode.toUpperCase() === searchCode)
-    
+
     const uniquePolicies = new Map<string, UserPolicy>()
     userPolicies.forEach(policy => {
       uniquePolicies.set(policy.policyNumber.toUpperCase(), policy)
@@ -289,7 +309,7 @@ const handleAddRemittance = async (remittance: InsuranceRemittanceForm) => {
         chequeId: remittance.chequeId,
       })
     }
-    
+
     isRemittanceOpen.value = false
     toast.success('Remittance added successfully!')
   } catch {
@@ -311,7 +331,7 @@ const handleAddCheque = async (cheque: InsuranceChequeForm) => {
       salaryMonth: cheque.salaryMonth,
     })
     // also GIS store if needed, but they are mocked mostly anyway.
-    
+
     isChequeOpen.value = false
     toast.success('Cheque Details added successfully!')
   } catch {
@@ -324,30 +344,71 @@ const handleAddCheque = async (cheque: InsuranceChequeForm) => {
   <section class="policies-page">
     <header class="policies-header">
       <div class="search-section">
-        <SearchBar 
-          :items="searchItems" 
+        <SearchBar
+          :items="searchItems"
           placeholder="Search by Employee Code (e.g. 3571)..."
-          @select="handleSearchSelect" 
+          @select="handleSearchSelect"
+          @input="handleSearchInput"
         />
-        <BaseButton v-if="selectedEmpCode" variant="secondary" @click="clearSelection">Clear Search</BaseButton>
+        <BaseButton v-if="selectedEmpCode" variant="secondary" @click="clearSelection"
+          >Clear Search</BaseButton
+        >
       </div>
-      
+
       <div class="action-buttons">
         <BaseButton variant="primary" @click="isAddPolicyOpen = true">
           <template #icon>
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"></path></svg>
+            <svg
+              viewBox="0 0 24 24"
+              width="18"
+              height="18"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M12 5v14M5 12h14"></path>
+            </svg>
           </template>
           Add Policy
         </BaseButton>
         <BaseButton variant="secondary" @click="isRemittanceOpen = true">
           <template #icon>
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line></svg>
+            <svg
+              viewBox="0 0 24 24"
+              width="18"
+              height="18"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <rect x="2" y="5" width="20" height="14" rx="2"></rect>
+              <line x1="2" y1="10" x2="22" y2="10"></line>
+            </svg>
           </template>
           Add Monthly Remittance
         </BaseButton>
         <BaseButton variant="secondary" @click="isChequeOpen = true">
           <template #icon>
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+            <svg
+              viewBox="0 0 24 24"
+              width="18"
+              height="18"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+              <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
           </template>
           Add Cheque Details
         </BaseButton>
@@ -355,18 +416,19 @@ const handleAddCheque = async (cheque: InsuranceChequeForm) => {
     </header>
 
     <main v-if="selectedEmpCode" class="policies-content">
-      
       <div class="employee-header-card">
         <div class="emp-avatar">{{ selectedEmpName.charAt(0).toUpperCase() }}</div>
         <div class="emp-info">
           <h2>{{ selectedEmpName }}</h2>
-          <p>Employee Code: <strong>{{ selectedEmpCode }}</strong></p>
+          <p>
+            Employee Code: <strong>{{ selectedEmpCode }}</strong>
+          </p>
         </div>
       </div>
 
       <div class="content-section">
         <h3>Policies</h3>
-        
+
         <div class="data-table-container">
           <table class="data-table">
             <thead>
@@ -380,40 +442,101 @@ const handleAddCheque = async (cheque: InsuranceChequeForm) => {
             </thead>
             <tbody>
               <tr v-for="user in displayedUsers" :key="user.policyNumber">
-                <td><span :class="'badge ' + user.policyType.toLowerCase()">{{ user.policyType }}</span></td>
-                <td><strong>{{ user.policyNumber }}</strong></td>
+                <td>
+                  <span :class="'badge ' + user.policyType.toLowerCase()">{{
+                    user.policyType
+                  }}</span>
+                </td>
+                <td>
+                  <strong>{{ user.policyNumber }}</strong>
+                </td>
                 <td>₹{{ user.premium }}</td>
                 <td>{{ user.dateOfMaturity }}</td>
                 <td class="actions-cell">
                   <BaseButton variant="edit" @click="openEditModal(user)" title="Edit">
                     <template #icon>
-                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                      <svg
+                        viewBox="0 0 24 24"
+                        width="14"
+                        height="14"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
+                        <path
+                          d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"
+                        ></path>
+                        <path
+                          d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"
+                        ></path>
+                      </svg>
                     </template>
                     Edit
                   </BaseButton>
-                  <BaseButton variant="print" @click="openPrintModal(user)" title="Print / Export">
+                  <BaseButton
+                    variant="print"
+                    @click="openPrintModal(user)"
+                    title="Print / Export"
+                  >
                     <template #icon>
-                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                      <svg
+                        viewBox="0 0 24 24"
+                        width="14"
+                        height="14"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
+                        <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                        <path
+                          d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"
+                        ></path>
+                        <rect x="6" y="14" width="12" height="8"></rect>
+                      </svg>
                     </template>
                     Print
                   </BaseButton>
-                  <BaseButton variant="cancel" @click="confirmDeletePolicy(user)" title="Delete">
+                  <BaseButton
+                    variant="cancel"
+                    @click="confirmDeletePolicy(user)"
+                    title="Delete"
+                  >
                     <template #icon>
-                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                      <svg
+                        viewBox="0 0 24 24"
+                        width="14"
+                        height="14"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path
+                          d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+                        ></path>
+                      </svg>
                     </template>
                     Delete
                   </BaseButton>
                 </td>
               </tr>
               <tr v-if="displayedUsers.length === 0">
-                <td colspan="5" class="empty-state">No policies found for this employee.</td>
+                <td colspan="5" class="empty-state">
+                  No policies found for this employee.
+                </td>
               </tr>
             </tbody>
           </table>
         </div>
       </div>
 
-      <div class="content-section" style="margin-top: 2rem;">
+      <div class="content-section" style="margin-top: 2rem">
         <h3>Remittances</h3>
         <div class="data-table-container">
           <table class="data-table">
@@ -429,15 +552,23 @@ const handleAddCheque = async (cheque: InsuranceChequeForm) => {
             </thead>
             <tbody>
               <tr v-for="(remit, index) in displayedRemittances" :key="index">
-                <td><span :class="'badge ' + remit.policyType.toLowerCase()">{{ remit.policyType }}</span></td>
-                <td><strong>{{ remit.policyNumber }}</strong></td>
+                <td>
+                  <span :class="'badge ' + remit.policyType.toLowerCase()">{{
+                    remit.policyType
+                  }}</span>
+                </td>
+                <td>
+                  <strong>{{ remit.policyNumber }}</strong>
+                </td>
                 <td>{{ remit.salaryMonth }}</td>
                 <td>{{ remit.dueMonth }}</td>
                 <td>₹{{ remit.amountDeducted }}</td>
-                <td>{{ remit.chequeId || '-' }}</td>
+                <td>{{ remit.chequeId || "-" }}</td>
               </tr>
               <tr v-if="displayedRemittances.length === 0">
-                <td colspan="6" class="empty-state">No remittances recorded for this employee.</td>
+                <td colspan="6" class="empty-state">
+                  No remittances recorded for this employee.
+                </td>
               </tr>
             </tbody>
           </table>
@@ -446,7 +577,19 @@ const handleAddCheque = async (cheque: InsuranceChequeForm) => {
     </main>
 
     <main v-else class="policies-content empty-content">
-      <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="#cbd5e1" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+      <svg
+        viewBox="0 0 24 24"
+        width="48"
+        height="48"
+        fill="none"
+        stroke="#cbd5e1"
+        stroke-width="1.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <circle cx="11" cy="11" r="8"></circle>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      </svg>
       <h2>Search for an Employee</h2>
       <p>Use the search bar above to select an employee and view their policy details.</p>
     </main>
@@ -491,7 +634,10 @@ const handleAddCheque = async (cheque: InsuranceChequeForm) => {
       :emp-code="policyForExport.empCode"
       :emp-name="policyForExport.empName"
       :policy-number="policyForExport.policyNumber"
-      @close="isExportOpen = false; policyForExport = null"
+      @close="
+        isExportOpen = false;
+        policyForExport = null;
+      "
     />
     <ConfirmDialog
       :is-open="isDeleteConfirmOpen"
