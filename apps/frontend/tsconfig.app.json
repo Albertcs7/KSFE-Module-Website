@@ -15,7 +15,8 @@
     "src/modules/Insurance/components/SLIChequeModal.vue",
     "src/modules/Insurance/components/SLIEditUserModal.vue",
     "src/modules/Insurance/components/SLIRemittanceModal.vue",
-    "src/modules/Insurance/pages/AddUserPage.vue"
+    "src/modules/Insurance/pages/AddUserPage.vue",
+    "src/modules/Insurance/pages/InsurancePage.vue"
   ],
   "compilerOptions": {
     // Extra safety for array and object lookups, but may have false positives.
