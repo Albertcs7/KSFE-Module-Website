@@ -1,6 +1,8 @@
 import type { RouteRecordRaw } from 'vue-router'
 
 import InsuranceLayout from '../modules/Insurance/layout/InsuranceLayout.vue'
+import InsurancePage from '../modules/Insurance/pages/InsurancePage.vue'
+import InsuranceOptionPage from '../modules/Insurance/pages/InsuranceOptionPage.vue'
 import PoliciesPage from '../modules/Insurance/pages/PoliciesPage.vue'
 import MonthlyReportPage from '../modules/Insurance/pages/MonthlyReportPage.vue'
 import LoginPage from './pages/LoginPage.vue'
@@ -22,23 +24,24 @@ export const appRoutes: RouteRecordRaw[] = [
     redirect: '/insurance',
   },
   {
-    path:'/insurance',
-    component:InsuranceLayout,
-    children:[
-     {
-      path:'',
-      redirect: { name: 'insurance-policies' }
-     },
-     {
-      path:'policies',
-      name:'insurance-policies',
-      component:PoliciesPage,
-     },
-     {
-      path:'monthly-report',
-      name:'insurance-monthly-report',
-      component:MonthlyReportPage,
-     }
+    path: '/insurance',
+    component: InsuranceLayout,
+    children: [
+      {
+        path: '',
+        name: 'insurance',
+        component: InsurancePage,
+      },
+      {
+        path: 'policies',
+        name: 'insurance-policies',
+        component: PoliciesPage,
+      },
+      {
+        path: 'monthly-report',
+        name: 'insurance-monthly-report',
+        component: MonthlyReportPage,
+      }
     ]
   }
 ]

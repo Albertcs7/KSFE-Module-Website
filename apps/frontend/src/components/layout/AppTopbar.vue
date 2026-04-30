@@ -1,27 +1,39 @@
 <script setup lang="ts">
-import { useRouter } from 'vue-router'
+import { useAuthStore } from "@/store/auth.store";
+import { computed } from "vue";
+import { useRouter } from "vue-router";
 
 interface TopbarProps {
-  isMobile?: boolean
-  isSidebarCollapsed?: boolean
-  isMobileSidebarOpen?: boolean
+  isMobile?: boolean;
+  isSidebarCollapsed?: boolean;
+  isMobileSidebarOpen?: boolean;
 }
 
 withDefaults(defineProps<TopbarProps>(), {
   isMobile: false,
   isSidebarCollapsed: false,
   isMobileSidebarOpen: false,
-})
+});
 
 const emit = defineEmits<{
-  (e: 'toggle-sidebar'): void
-}>()
+  (e: "toggle-sidebar"): void;
+}>();
 
-const router = useRouter()
+const router = useRouter();
+const authStore = useAuthStore();
 
-const logout = (): void => {
-  router.push('/')
-}
+const firstName = computed(() => {
+  const fullName = authStore.user?.first_name?.trim() ?? "";
+  return fullName ? fullName.split(" ")[0] ?? "User" : "User";
+});
+
+const roleLabel = computed(() => authStore.roleName || "Employee");
+const initials = computed(() => firstName.value.charAt(0).toUpperCase());
+
+const logout = async (): Promise<void> => {
+  await authStore.logout();
+  router.push("/login");
+};
 </script>
 
 <template>
@@ -43,10 +55,10 @@ const logout = (): void => {
 
     <div class="profile">
       <button class="profile-action" type="button">
-        <span class="profile-avatar"></span>
+        <span class="profile-avatar">{{ initials }}</span>
         <span class="profile-text">
-          <strong></strong>
-          <small></small>
+          <strong>{{ firstName }}</strong>
+          <small>{{ roleLabel }}</small>
         </span>
       </button>
 
@@ -114,10 +126,7 @@ const logout = (): void => {
   align-items: center;
   gap: 5px;
   cursor: pointer;
-  transition:
-    transform 0.2s ease,
-    background 0.2s ease,
-    box-shadow 0.2s ease;
+  transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
 }
 
 .menu-toggle:hover {
@@ -142,10 +151,7 @@ const logout = (): void => {
   gap: 0.75rem;
   padding: 0.45rem 0.5rem 0.45rem 0.45rem;
   cursor: pointer;
-  transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease,
-    border-color 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
 .profile-action:hover {
@@ -194,10 +200,7 @@ const logout = (): void => {
   display: grid;
   place-items: center;
   cursor: pointer;
-  transition:
-    color 0.2s ease,
-    border-color 0.2s ease,
-    background 0.2s ease,
+  transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease,
     transform 0.2s ease;
   flex-shrink: 0;
 }
