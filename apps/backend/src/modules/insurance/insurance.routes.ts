@@ -1,5 +1,5 @@
 import { IncomingMessage,ServerResponse } from "http";
-import { getAllPolicies, createPolicy, searchPolicies} from "./insurance.controller";
+import { getAllPolicies, createPolicy, searchPolicies, createRemittance} from "./insurance.controller";
 
 export const insuranceRoutes = async (
   req: IncomingMessage,
@@ -23,6 +23,13 @@ export const insuranceRoutes = async (
     await createPolicy(req, res);
     return true;
   }
+  
+  // POST ADD REMITTANCE 
+  if (req.method === "POST" && req.url === "/insurance/remittance") {
+    await createRemittance(req, res);
+    return true;
+  }
 
   return false;
 };
+

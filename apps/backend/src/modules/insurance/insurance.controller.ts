@@ -1,6 +1,6 @@
 import { IncomingMessage, ServerResponse } from "http";
 import { parseBody } from "../../utils/parseBody";
-import { createPolicyService, getAllPoliciesService ,searchPoliciesService} from "./insurance.service";
+import { createPolicyService, getAllPoliciesService, searchPoliciesService, createRemittanceService } from "./insurance.service";
 
 export const getAllPolicies = async (
   req: IncomingMessage,
@@ -68,6 +68,58 @@ export const createPolicy = async (
     }));
 
   } catch (error: any) {
+    res.writeHead(400);
+    res.end(JSON.stringify({ message: error.message }));
+  }
+};
+
+//Remitance function
+
+export const createRemittance = async (
+  req: IncomingMessage,
+  res: ServerResponse
+) => {
+  try {
+    const body = await parseBody(req);
+
+    const {
+      employee_policy_id,
+      salary_month,
+      due_month,
+      amount_deducted,
+      policy_cheque_id
+    } = body;
+
+    // 🔒 Basic validation
+    if (
+      !employee_policy_id ||
+      !salary_month ||
+      !due_month ||
+      !amount_deducted
+    ) {
+      res.writeHead(400);
+      res.end(JSON.stringify({ message: "Missing required fields" }));
+      return;
+    }
+
+    // 👇 call service (we will create this next)
+    const result = await createRemittanceService({
+      employee_policy_id,
+      salary_month,
+      due_month,
+      amount_deducted,
+      policy_cheque_id
+    });
+
+    res.writeHead(201);
+    res.end(JSON.stringify({
+      message: "Remittance created successfully",
+      data: result
+    }));
+
+  } catch (error: any) {
+    console.error(error);
+
     res.writeHead(400);
     res.end(JSON.stringify({ message: error.message }));
   }

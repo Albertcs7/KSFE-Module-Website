@@ -6,7 +6,8 @@
  * It integrates the search bar, the action modals (Add, Remittance, Cheque),
  * and handles data display for a selected employee.
  */
-
+import { createRemittance } from '@/services/api/insurance.api'
+import type { CreateRemittancePayload } from '../types/insurance.types'
 import { ref, computed, onMounted, watch } from 'vue'
 import { useSLIStore } from '../store/useSLIStore'
 import { useGISStore } from '../store/useGISStore'
@@ -17,7 +18,6 @@ import type {
   InsuranceChequeForm,
   InsurancePolicyForm,
   InsurancePolicyOption,
-  InsuranceRemittanceForm,
 } from '../types/insurance.types'
 import BaseButton from '../../../components/ui/BaseButton.vue'
 
@@ -36,6 +36,7 @@ const toast = useToast()
 
 // Unified User type
 interface UserPolicy {
+  id: number
   empCode: string
   empName: string
   policyNumber: string
@@ -57,6 +58,7 @@ const fetchPolicies = async (empCode?: string) => {
     const data = Array.isArray(res.data) ? res.data : res.data.data || []
 
     policies.value = data.map((p: any) => ({
+      id: p.id,
       empCode: String(p.employee_code || p.empCode),
       empName: p.employee_name || p.empName,
       policyNumber: p.policy_no || p.sliPolicyNumber || p.gisPolicyNumber || p.policyNumber,
@@ -170,6 +172,7 @@ const displayedRemittances = computed(() => {
 
 const policyOptions = computed<InsurancePolicyOption[]>(() =>
   policies.value.map(user => ({
+    id: user.id, // 👈 ADD THIS
     empCode: user.empCode,
     empName: user.empName,
     policyNumber: user.policyNumber,
@@ -279,40 +282,18 @@ const handleUpdateUser = async (user: InsurancePolicyForm) => {
   }
 }
 
-const handleAddRemittance = async (remittance: InsuranceRemittanceForm) => {
-  if (!remittance.empCode || !remittance.policyNumber || !remittance.salaryMonth) {
-    toast.error('Please fill in required fields.')
-    return
-  }
-
+const handleAddRemittance = async (payload: CreateRemittancePayload) => {
   try {
-    // Find policy to know its type
-    const policy = policies.value.find(p => p.policyNumber === remittance.policyNumber)
-    const pType = policy ? policy.policyType : 'SLI' // default fallback
-
-    if (pType === 'SLI') {
-      await sliStore.addRemittance({
-        empCode: remittance.empCode,
-        sliPolicyNumber: remittance.policyNumber,
-        salaryMonth: remittance.salaryMonth,
-        dueMonth: remittance.dueMonth,
-        amountDeducted: remittance.amountDeducted,
-        chequeId: remittance.chequeId,
-      })
-    } else {
-       await gisStore.addRemittance({
-        empCode: remittance.empCode,
-        gisPolicyNumber: remittance.policyNumber,
-        salaryMonth: remittance.salaryMonth,
-        dueMonth: remittance.dueMonth,
-        amountDeducted: remittance.amountDeducted,
-        chequeId: remittance.chequeId,
-      })
-    }
+    await createRemittance(payload)
 
     isRemittanceOpen.value = false
     toast.success('Remittance added successfully!')
-  } catch {
+
+    // optional: refresh policies or later remittance API
+    await fetchPolicies()
+
+  } catch (err) {
+    console.error(err)
     toast.error('Unable to add remittance. Please try again.')
   }
 }

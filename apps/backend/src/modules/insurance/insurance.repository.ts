@@ -96,3 +96,30 @@ export const createPolicyRepo = async (data: any) => {
   const [result]: any = await db.query(query, values);
   return result;
 };
+
+// ADD REMITTANCE
+export const createRemittanceRepo = async (data: {
+  employee_policy_id: number;
+  salary_month: string;
+  due_month: string;
+  amount_deducted: number;
+  policy_cheque_id?: number;
+}) => {
+
+  const query = `
+    INSERT INTO policy_remittance
+    (employee_policy_id, salary_month, due_month, amount_deducted, policy_cheque_id)
+    VALUES (?, ?, ?, ?, ?)
+  `;
+
+  const values = [
+    data.employee_policy_id,
+    data.salary_month,
+    data.due_month,
+    data.amount_deducted,
+    data.policy_cheque_id ?? null  // 👈 important
+  ];
+
+  const [result]: any = await db.query(query, values);
+  return result;
+};

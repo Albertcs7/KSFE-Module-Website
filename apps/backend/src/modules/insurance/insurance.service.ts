@@ -1,4 +1,4 @@
-import { getAllPoliciesRepo,searchPoliciesRepo, searchPoliciesCountRepo,createPolicyRepo } from "./insurance.repository";
+import { getAllPoliciesRepo,searchPoliciesRepo, searchPoliciesCountRepo,createPolicyRepo, createRemittanceRepo } from "./insurance.repository";
 
 /* 
   VIEWING THE EMPLOYEE POLICIES
@@ -55,6 +55,51 @@ export const createPolicyService = async (data: any) => {
     // ✅ Handle duplicate policy_no
     if (err.code === "ER_DUP_ENTRY") {
       throw new Error("Policy number already exists");
+    }
+
+    throw err;
+  }
+};
+
+//Remmittancce ADDING
+
+export const createRemittanceService = async (data: {
+  employee_policy_id: number;
+  salary_month: string;
+  due_month: string;
+  amount_deducted: number;
+  policy_cheque_id?: number;
+}) => {
+
+  const {
+    employee_policy_id,
+    salary_month,
+    due_month,
+    amount_deducted,
+    policy_cheque_id
+  } = data;
+
+  // ✅ Validation
+  if (!employee_policy_id || !salary_month || !due_month || !amount_deducted) {
+    throw new Error("Missing required fields");
+  }
+
+  try {
+    const result = await createRemittanceRepo({
+      employee_policy_id,
+      salary_month,
+      due_month,
+      amount_deducted,
+      policy_cheque_id
+    });
+
+    return result;
+
+  } catch (err: any) {
+
+    // ✅ Handle duplicate (employee_policy_id + salary_month)
+    if (err.code === "ER_DUP_ENTRY") {
+      throw new Error("Remittance already exists for this month");
     }
 
     throw err;

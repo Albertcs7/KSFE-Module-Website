@@ -1,74 +1,104 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch } from "vue";
 import type {
   InsuranceModuleType,
   InsurancePolicyOption,
   InsuranceRemittanceForm,
-} from '../../types/insurance.types'
-import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
+} from "../../types/insurance.types";
+import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
+import type { CreateRemittancePayload } from "../../types/insurance.types";
 
 const props = defineProps<{
-  isOpen: boolean
-  moduleType?: InsuranceModuleType
-  policyMode: 'select' | 'auto'
-  policies: InsurancePolicyOption[]
-  isSaving: boolean
-  error: string | null
-}>()
+  isOpen: boolean;
+  moduleType?: InsuranceModuleType;
+  policyMode: "select" | "auto";
+  policies: InsurancePolicyOption[];
+  isSaving: boolean;
+  error: string | null;
+}>();
 
 const emit = defineEmits<{
-  (e: 'close'): void
-  (e: 'submit', value: InsuranceRemittanceForm): void
-}>()
+  (e: "close"): void;
+  (e: "submit", value: CreateRemittancePayload): void;
+}>();
 
 const emptyForm = (): InsuranceRemittanceForm => ({
-  empCode: '',
-  policyNumber: '',
-  salaryMonth: '',
-  dueMonth: '',
+  empCode: "",
+  policyNumber: "",
+  salaryMonth: "",
+  dueMonth: "",
   amountDeducted: 0,
-  chequeId: '',
-})
+  chequeId: "",
+});
 
-const formData = ref<InsuranceRemittanceForm>(emptyForm())
-const showConfirm = ref(false)
+const formData = ref<InsuranceRemittanceForm>(emptyForm());
+const showConfirm = ref(false);
 
 const availablePolicies = computed(() => {
-  if (!formData.value.empCode) return []
-  const empCode = formData.value.empCode.toUpperCase()
-  const matchingPolicies = props.policies.filter(policy => policy.empCode.toUpperCase() === empCode)
-  return Array.from(new Map(matchingPolicies.map(policy => [policy.policyNumber, policy])).values())
-})
+  if (!formData.value.empCode) return [];
+  const empCode = formData.value.empCode.toUpperCase();
+  const matchingPolicies = props.policies.filter(
+    (policy) => policy.empCode.toUpperCase() === empCode
+  );
+  return Array.from(
+    new Map(matchingPolicies.map((policy) => [policy.policyNumber, policy])).values()
+  );
+});
 
-const selectedEmpName = computed(() => availablePolicies.value[0]?.empName ?? '')
+const selectedPolicy = computed(() => {
+  return availablePolicies.value.find(
+    (p) => p.policyNumber === formData.value.policyNumber
+  );
+});
+
+const selectedEmpName = computed(() => availablePolicies.value[0]?.empName ?? "");
 
 watch(
   () => props.isOpen,
-  isOpen => {
+  (isOpen) => {
     if (isOpen) {
-      formData.value = emptyForm()
-      showConfirm.value = false
+      formData.value = emptyForm();
+      showConfirm.value = false;
     }
-  },
-)
+  }
+);
 
 watch(
   () => formData.value.empCode,
   () => {
-    if (props.policyMode === 'auto') {
-      formData.value.policyNumber = availablePolicies.value[0]?.policyNumber ?? ''
+    if (props.policyMode === "auto") {
+      formData.value.policyNumber = availablePolicies.value[0]?.policyNumber ?? "";
     }
-  },
-)
+  }
+);
 
 const handleRequestSubmit = () => {
-  showConfirm.value = true
-}
+  showConfirm.value = true;
+};
 
 const handleConfirm = () => {
-  showConfirm.value = false
-  emit('submit', { ...formData.value })
-}
+  showConfirm.value = false;
+
+  if (!selectedPolicy.value) {
+    alert("Invalid policy selected");
+    return;
+  }
+
+  const payload = {
+    employee_policy_id: selectedPolicy.value.id,
+    salary_month: formData.value.salaryMonth,
+    due_month: formData.value.dueMonth,
+    amount_deducted: formData.value.amountDeducted,
+    policy_cheque_id: formData.value.chequeId
+      ? Number(formData.value.chequeId)
+      : undefined,
+  };
+
+  const emit = defineEmits<{
+    (e: "close"): void;
+    (e: "submit", value: CreateRemittancePayload): void;
+  }>();
+};
 </script>
 
 <template>
@@ -76,7 +106,9 @@ const handleConfirm = () => {
     <div class="modal-content">
       <div class="modal-header">
         <h2>Add Monthly Remittance</h2>
-        <button class="close-btn" :disabled="isSaving" @click="emit('close')">&times;</button>
+        <button class="close-btn" :disabled="isSaving" @click="emit('close')">
+          &times;
+        </button>
       </div>
 
       <div v-if="selectedEmpName" class="employee-info">
@@ -92,7 +124,14 @@ const handleConfirm = () => {
 
         <div class="form-group">
           <label for="remitEmpCode">Employee Code</label>
-          <input id="remitEmpCode" v-model="formData.empCode" type="text" pattern="[0-9]+" placeholder="e.g. 3571" required />
+          <input
+            id="remitEmpCode"
+            v-model="formData.empCode"
+            type="text"
+            pattern="[0-9]+"
+            placeholder="e.g. 3571"
+            required
+          />
         </div>
 
         <div class="form-group">
@@ -105,7 +144,11 @@ const handleConfirm = () => {
             required
           >
             <option value="">Select a policy</option>
-            <option v-for="policy in availablePolicies" :key="policy.policyNumber" :value="policy.policyNumber">
+            <option
+              v-for="policy in availablePolicies"
+              :key="policy.policyNumber"
+              :value="policy.policyNumber"
+            >
               {{ policy.policyNumber }} (Premium: {{ policy.premium.toFixed(2) }})
             </option>
           </select>
@@ -116,14 +159,24 @@ const handleConfirm = () => {
             v-model="formData.policyNumber"
             type="text"
             :readonly="policyMode === 'auto'"
-            :placeholder="policyMode === 'auto' ? 'Auto-filled when employee code is entered' : `e.g. 1234`"
+            :placeholder="
+              policyMode === 'auto'
+                ? 'Auto-filled when employee code is entered'
+                : `e.g. 1234`
+            "
             required
           />
 
-          <small v-if="formData.empCode && availablePolicies.length === 0" class="text-muted">
+          <small
+            v-if="formData.empCode && availablePolicies.length === 0"
+            class="text-muted"
+          >
             No {{ moduleType }} policies found for this employee code
           </small>
-          <small v-if="policyMode === 'auto' && formData.policyNumber" class="text-success">
+          <small
+            v-if="policyMode === 'auto' && formData.policyNumber"
+            class="text-success"
+          >
             Policy auto-filled (Premium: {{ availablePolicies[0]?.premium.toFixed(2) }})
           </small>
         </div>
@@ -140,16 +193,34 @@ const handleConfirm = () => {
 
         <div class="form-group">
           <label for="amountDeducted">Amount Deducted</label>
-          <input id="amountDeducted" v-model="formData.amountDeducted" type="number" placeholder="0.00" required />
+          <input
+            id="amountDeducted"
+            v-model="formData.amountDeducted"
+            type="number"
+            placeholder="0.00"
+            required
+          />
         </div>
 
         <div class="form-group">
           <label for="chequeId">Cheque ID (Optional)</label>
-          <input id="chequeId" v-model="formData.chequeId" type="text" placeholder="Optional" />
+          <input
+            id="chequeId"
+            v-model="formData.chequeId"
+            type="text"
+            placeholder="Optional"
+          />
         </div>
 
         <div class="modal-actions">
-          <button type="button" class="btn-cancel" :disabled="isSaving" @click="emit('close')">Cancel</button>
+          <button
+            type="button"
+            class="btn-cancel"
+            :disabled="isSaving"
+            @click="emit('close')"
+          >
+            Cancel
+          </button>
           <button type="submit" class="btn-primary" :disabled="isSaving">
             Add Remittance
           </button>
@@ -170,7 +241,7 @@ const handleConfirm = () => {
 </template>
 
 <style scoped>
-@import './modal-shared.css';
+@import "./modal-shared.css";
 
 .employee-info {
   display: flex;

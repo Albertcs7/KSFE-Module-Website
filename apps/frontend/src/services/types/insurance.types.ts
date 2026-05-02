@@ -6,3 +6,11 @@ export interface CreatePolicyPayload {
   premium: number;
   maturity_date: string;
 }
+
+export interface CreateRemittancePayload {
+  employee_policy_id: number
+  salary_month: string
+  due_month: string
+  amount_deducted: number
+  policy_cheque_id?: number
+}
