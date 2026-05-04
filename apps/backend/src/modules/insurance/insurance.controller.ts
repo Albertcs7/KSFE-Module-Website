@@ -1,6 +1,6 @@
 import { IncomingMessage, ServerResponse } from "http";
 import { parseBody } from "../../utils/parseBody";
-import { createPolicyService, getAllPoliciesService, searchPoliciesService, createRemittanceService } from "./insurance.service";
+import { createPolicyService, createRemittanceService, getAllPoliciesService, searchPoliciesService } from "./insurance.service";
 
 export const getAllPolicies = async (
   req: IncomingMessage,
@@ -83,19 +83,21 @@ export const createRemittance = async (
     const body = await parseBody(req);
 
     const {
-      employee_policy_id,
-      salary_month,
-      due_month,
-      amount_deducted,
-      policy_cheque_id
+      empCode,
+      policyNumber,
+      salaryMonth,
+      dueMonth,
+      amountDeducted,
+      chequeId
     } = body;
 
     // 🔒 Basic validation
     if (
-      !employee_policy_id ||
-      !salary_month ||
-      !due_month ||
-      !amount_deducted
+      !empCode ||
+      !policyNumber ||
+      !salaryMonth ||
+      !dueMonth ||
+      !amountDeducted
     ) {
       res.writeHead(400);
       res.end(JSON.stringify({ message: "Missing required fields" }));
@@ -104,11 +106,12 @@ export const createRemittance = async (
 
     // 👇 call service (we will create this next)
     const result = await createRemittanceService({
-      employee_policy_id,
-      salary_month,
-      due_month,
-      amount_deducted,
-      policy_cheque_id
+      empCode,
+      policyNumber,
+      salaryMonth,
+      dueMonth,
+      amountDeducted,
+      chequeId
     });
 
     res.writeHead(201);

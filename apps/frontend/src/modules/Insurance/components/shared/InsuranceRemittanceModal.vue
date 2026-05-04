@@ -1,12 +1,11 @@
 <script setup lang="ts">
+import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
 import { computed, ref, watch } from "vue";
 import type {
   InsuranceModuleType,
   InsurancePolicyOption,
   InsuranceRemittanceForm,
 } from "../../types/insurance.types";
-import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
-import type { CreateRemittancePayload } from "../../types/insurance.types";
 
 const props = defineProps<{
   isOpen: boolean;
@@ -19,7 +18,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: "close"): void;
-  (e: "submit", value: CreateRemittancePayload): void;
+  (e: "submit", value: InsuranceRemittanceForm): void;
 }>();
 
 const emptyForm = (): InsuranceRemittanceForm => ({
@@ -79,25 +78,13 @@ const handleRequestSubmit = () => {
 const handleConfirm = () => {
   showConfirm.value = false;
 
-  if (!selectedPolicy.value) {
-    alert("Invalid policy selected");
+  if (!formData.value.empCode || !formData.value.policyNumber) {
+    alert("Invalid employee code or policy number");
     return;
   }
 
-  const payload = {
-    employee_policy_id: selectedPolicy.value.id,
-    salary_month: formData.value.salaryMonth,
-    due_month: formData.value.dueMonth,
-    amount_deducted: formData.value.amountDeducted,
-    policy_cheque_id: formData.value.chequeId
-      ? Number(formData.value.chequeId)
-      : undefined,
-  };
-
-  const emit = defineEmits<{
-    (e: "close"): void;
-    (e: "submit", value: CreateRemittancePayload): void;
-  }>();
+  // Emit the form data - backend will look up the employee_policy_id
+  emit("submit", formData.value);
 };
 </script>
 

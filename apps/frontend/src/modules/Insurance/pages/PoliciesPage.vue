@@ -6,27 +6,25 @@
  * It integrates the search bar, the action modals (Add, Remittance, Cheque),
  * and handles data display for a selected employee.
  */
-import { createRemittance } from '@/services/api/insurance.api'
-import type { CreateRemittancePayload } from '../types/insurance.types'
-import { ref, computed, onMounted, watch } from 'vue'
-import { useSLIStore } from '../store/useSLIStore'
-import { useGISStore } from '../store/useGISStore'
+import { createPolicy, createRemittance, getPolicies } from '@/services/api/insurance.api'
+import { computed, onMounted, ref, watch } from 'vue'
 import SearchBar, { type SearchBarItem } from '../../../components/searchBar/SearchBar.vue'
+import BaseButton from '../../../components/ui/BaseButton.vue'
 import { useToast } from '../../../composables/useToast'
-import { createPolicy, getPolicies } from '@/services/api/insurance.api'
+import { useGISStore } from '../store/useGISStore'
+import { useSLIStore } from '../store/useSLIStore'
 import type {
   InsuranceChequeForm,
   InsurancePolicyForm,
-  InsurancePolicyOption,
+  InsurancePolicyOption, InsuranceRemittanceForm
 } from '../types/insurance.types'
-import BaseButton from '../../../components/ui/BaseButton.vue'
 
 // Import Modals for Actions
-import InsuranceChequeModal from '../components/shared/InsuranceChequeModal.vue'
+import ExportReportModal from '../components/ExportReportModal.vue'
 import InsuranceAddUserModal from '../components/shared/InsuranceAddUserModal.vue'
+import InsuranceChequeModal from '../components/shared/InsuranceChequeModal.vue'
 import InsurancePolicyModal from '../components/shared/InsurancePolicyModal.vue'
 import InsuranceRemittanceModal from '../components/shared/InsuranceRemittanceModal.vue'
-import ExportReportModal from '../components/ExportReportModal.vue'
 
 // We use both stores if needed, or primarily use one for common API error states if they are similar.
 // Since the prompt asks to keep remittances and cheque details working, we'll route the calls based on policyType.
@@ -90,7 +88,7 @@ const policyToDelete = ref<UserPolicy | null>(null)
 const isDeleteConfirmOpen = ref(false)
 const isDeleting = ref(false)
 
-// --- SEARCH & FILTER STATE ---
+// --- SEARCH &4 STATE ---
 const selectedEmpCode = ref<string | null>(null)
 const searchQuery = ref('')
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
@@ -282,15 +280,21 @@ const handleUpdateUser = async (user: InsurancePolicyForm) => {
   }
 }
 
-const handleAddRemittance = async (payload: CreateRemittancePayload) => {
+const handleAddRemittance = async (formData: InsuranceRemittanceForm) => {
   try {
-    await createRemittance(payload)
+    // Send empCode and policyNumber to backend
+    // Backend will look up employee_policy_id and store the remittance
+    await createRemittance({
+      empCode: formData.empCode,
+      policyNumber: formData.policyNumber,
+      salaryMonth: formData.salaryMonth,
+      dueMonth: formData.dueMonth,
+      amountDeducted: formData.amountDeducted,
+      chequeId: formData.chequeId,
+    })
 
     isRemittanceOpen.value = false
     toast.success('Remittance added successfully!')
-
-    // optional: refresh policies or later remittance API
-    await fetchPolicies()
 
   } catch (err) {
     console.error(err)

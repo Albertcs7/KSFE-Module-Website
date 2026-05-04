@@ -1,6 +1,5 @@
 import api from "../http/axios";
 import type { CreatePolicyPayload } from "../types/insurance.types";
-import type { CreateRemittancePayload } from '../types/insurance.types'
 
 /**
  * GET  policies by employee code
@@ -42,7 +41,15 @@ export const deletePolicy = (policyNo: string) => {
 
 /**
  * CREATE remittance
+ * Backend receives empCode and policyNumber, looks up employee_policy_id, and stores remittance
  */
-export const createRemittance = (data: CreateRemittancePayload) => {
+export const createRemittance = (data: {
+  empCode: string
+  policyNumber: string
+  salaryMonth: string
+  dueMonth: string
+  amountDeducted: number
+  chequeId?: string
+}) => {
   return api.post("/insurance/remittance", data);
 };

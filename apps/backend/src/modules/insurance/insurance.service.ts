@@ -1,4 +1,5 @@
-import { getAllPoliciesRepo,searchPoliciesRepo, searchPoliciesCountRepo,createPolicyRepo, createRemittanceRepo } from "./insurance.repository";
+import { db } from "../../database/mysql";
+import { createPolicyRepo, createRemittanceRepo, getAllPoliciesRepo, searchPoliciesCountRepo, searchPoliciesRepo } from "./insurance.repository";
 
 /* 
   VIEWING THE EMPLOYEE POLICIES
@@ -64,33 +65,47 @@ export const createPolicyService = async (data: any) => {
 //Remmittancce ADDING
 
 export const createRemittanceService = async (data: {
-  employee_policy_id: number;
-  salary_month: string;
-  due_month: string;
-  amount_deducted: number;
-  policy_cheque_id?: number;
+  empCode: string;
+  policyNumber: string;
+  salaryMonth: string;
+  dueMonth: string;
+  amountDeducted: number;
+  chequeId?: string;
 }) => {
 
   const {
-    employee_policy_id,
-    salary_month,
-    due_month,
-    amount_deducted,
-    policy_cheque_id
+    empCode,
+    policyNumber,
+    salaryMonth,
+    dueMonth,
+    amountDeducted,
+    chequeId
   } = data;
 
   // ✅ Validation
-  if (!employee_policy_id || !salary_month || !due_month || !amount_deducted) {
+  if (!empCode || !policyNumber || !salaryMonth || !dueMonth || amountDeducted === undefined) {
     throw new Error("Missing required fields");
   }
 
   try {
+    // Look up employee_policy_id using empCode and policyNumber
+    const [rows]: any = await db.query(
+      `SELECT id FROM employee_policy WHERE employee_code = ? AND policy_no = ?`,
+      [empCode, policyNumber]
+    );
+
+    if (!rows || rows.length === 0) {
+      throw new Error("Policy not found for this employee");
+    }
+
+    const employee_policy_id = rows[0].id;
+
     const result = await createRemittanceRepo({
       employee_policy_id,
-      salary_month,
-      due_month,
-      amount_deducted,
-      policy_cheque_id
+      salary_month: salaryMonth,
+      due_month: dueMonth,
+      amount_deducted: amountDeducted,
+      policy_cheque_id: chequeId ? Number(chequeId) : undefined
     });
 
     return result;
