@@ -134,6 +134,30 @@ watch(searchQuery, (val) => {
   }, 400)
 })
 
+// --- PAGINATION STATE ---
+const currentPage = ref(1)
+const itemsPerPage = 10
+
+const paginatedPolicies = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage
+  const end = start + itemsPerPage
+  return policies.value.slice(start, end)
+})
+
+const totalPages = computed(() => Math.max(1, Math.ceil(policies.value.length / itemsPerPage)))
+
+const nextPage = () => {
+  if (currentPage.value < totalPages.value) currentPage.value++
+}
+
+const prevPage = () => {
+  if (currentPage.value > 1) currentPage.value--
+}
+
+const viewEmployee = (empCode: string) => {
+  selectedEmpCode.value = empCode
+}
+
 // --- DATA COMPUTATION FOR TABLES ---
 const displayedUsers = computed(() => {
   if (selectedEmpCode.value) {
@@ -560,22 +584,57 @@ const handleAddCheque = async (cheque: InsuranceChequeForm) => {
       </div>
     </main>
 
-    <main v-else class="policies-content empty-content">
-      <svg
-        viewBox="0 0 24 24"
-        width="48"
-        height="48"
-        fill="none"
-        stroke="#cbd5e1"
-        stroke-width="1.5"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-      >
-        <circle cx="11" cy="11" r="8"></circle>
-        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-      </svg>
-      <h2>Search for an Employee</h2>
-      <p>Use the search bar above to select an employee and view their policy details.</p>
+    <main v-else class="policies-content">
+      <div class="content-section">
+        <h3 style="margin-bottom: 1.5rem;">All Policies Overview</h3>
+        <div class="data-table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Emp Code</th>
+                <th>Emp Name</th>
+                <th>Policy Type</th>
+                <th>Amount (Premium)</th>
+                <th>Maturity Date</th>
+                <th class="actions-col">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="policy in paginatedPolicies" :key="policy.id || policy.policyNumber">
+                <td><strong>{{ policy.empCode }}</strong></td>
+                <td>{{ policy.empName }}</td>
+                <td>
+                  <span :class="'badge ' + policy.policyType.toLowerCase()">{{ policy.policyType }}</span>
+                </td>
+                <td>₹{{ policy.premium }}</td>
+                <td>{{ policy.dateOfMaturity }}</td>
+                <td class="actions-cell">
+                  <BaseButton variant="secondary" @click="viewEmployee(policy.empCode)" title="View Details" style="padding: 0.4rem 0.6rem; font-size: 0.8rem; border-radius: 6px;">
+                    <template #icon>
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                        <circle cx="12" cy="12" r="3"></circle>
+                      </svg>
+                    </template>
+                    View
+                  </BaseButton>
+                </td>
+              </tr>
+              <tr v-if="paginatedPolicies.length === 0">
+                <td colspan="6" class="empty-state">
+                  No policies found in the system.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        
+        <div class="pagination-controls" v-if="totalPages > 1">
+          <button class="pagination-btn" :disabled="currentPage === 1" @click="prevPage">Previous</button>
+          <span class="pagination-info">Page {{ currentPage }} of {{ totalPages }}</span>
+          <button class="pagination-btn" :disabled="currentPage === totalPages" @click="nextPage">Next</button>
+        </div>
+      </div>
     </main>
 
     <InsuranceAddUserModal
@@ -797,6 +856,49 @@ const handleAddCheque = async (cheque: InsuranceChequeForm) => {
 .badge.sli {
   background: #e0e7ff;
   color: #3730a3;
+}
+
+.badge.gis {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.pagination-btn {
+  background: #fff;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #1d3a6d;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #1d3a6d;
+}
+
+.pagination-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pagination-info {
+  font-size: 0.9rem;
+  color: #64748b;
+  font-weight: 500;
 }
 
 .badge.gis {

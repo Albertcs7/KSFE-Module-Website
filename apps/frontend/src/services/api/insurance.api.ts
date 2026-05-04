@@ -12,6 +12,17 @@ export const getPolicies = (empCode?: string) => {
 };
 
 /**
+ * SEARCH policies (by empCode, empName, etc.)
+ */
+export const searchPolicies = (empCode?: string) => {
+  if (empCode && empCode.trim() !== '') {
+    return api.get(`/insurance/policies/search?empCode=${empCode}`);
+  }
+  return api.get("/insurance/policies/search");
+};
+
+
+/**
  * GET GIS policies (filters by policy_type=GIS)
  */
 export const getGISPolicies = () => {
