@@ -12,6 +12,14 @@ export const getPolicies = (empCode?: string) => {
 };
 
 /**
+ * SEARCH policies by employee code
+ * Used by the remittance modal to populate the policy dropdown on demand.
+ */
+export const searchPoliciesByEmployeeCode = (empCode: string) => {
+  return api.get(`/insurance/policies/search?empCode=${encodeURIComponent(empCode)}`);
+};
+
+/**
  * GET GIS policies (filters by policy_type=GIS)
  */
 export const getGISPolicies = () => {

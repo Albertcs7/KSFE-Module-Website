@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
+import { searchPoliciesByEmployeeCode } from "@/services/api/insurance.api";
 import { computed, ref, watch } from "vue";
 import type {
   InsuranceModuleType,
@@ -32,16 +33,25 @@ const emptyForm = (): InsuranceRemittanceForm => ({
 
 const formData = ref<InsuranceRemittanceForm>(emptyForm());
 const showConfirm = ref(false);
+const fetchedPolicies = ref<InsurancePolicyOption[]>([]);
+const isLoadingPolicies = ref(false);
+let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+const normalizeEmployeeCode = (value: string) => value.trim().toUpperCase();
+
+const mapPolicies = (rows: any[]): InsurancePolicyOption[] =>
+  rows.map((policy) => ({
+    id: Number(policy.id ?? policy.employee_policy_id ?? 0),
+    empCode: String(policy.employee_code ?? policy.empCode ?? "").toUpperCase(),
+    empName: String(policy.employee_name ?? policy.empName ?? ""),
+    policyNumber: String(policy.policy_no ?? policy.policyNumber ?? policy.sliPolicyNumber ?? policy.gisPolicyNumber ?? ""),
+    policyType: policy.policy_type ?? (policy.sliPolicyNumber ? "SLI" : "GIS"),
+    premium: Number(policy.premium ?? 0),
+    dateOfMaturity: String(policy.maturity_date ?? policy.dateOfMaturity ?? ""),
+  }));
 
 const availablePolicies = computed(() => {
-  if (!formData.value.empCode) return [];
-  const empCode = formData.value.empCode.toUpperCase();
-  const matchingPolicies = props.policies.filter(
-    (policy) => policy.empCode.toUpperCase() === empCode
-  );
-  return Array.from(
-    new Map(matchingPolicies.map((policy) => [policy.policyNumber, policy])).values()
-  );
+  return fetchedPolicies.value;
 });
 
 const selectedPolicy = computed(() => {
@@ -58,16 +68,50 @@ watch(
     if (isOpen) {
       formData.value = emptyForm();
       showConfirm.value = false;
+      fetchedPolicies.value = [];
+      if (debounceTimer) {
+        clearTimeout(debounceTimer);
+        debounceTimer = null;
+      }
     }
   }
 );
 
 watch(
   () => formData.value.empCode,
-  () => {
-    if (props.policyMode === "auto") {
-      formData.value.policyNumber = availablePolicies.value[0]?.policyNumber ?? "";
+  (empCode) => {
+    if (!props.isOpen) return;
+
+    formData.value.policyNumber = "";
+    fetchedPolicies.value = [];
+
+    if (debounceTimer) {
+      clearTimeout(debounceTimer);
     }
+
+    const normalizedEmpCode = normalizeEmployeeCode(empCode);
+
+    if (!normalizedEmpCode) return;
+
+    debounceTimer = setTimeout(async () => {
+      isLoadingPolicies.value = true;
+      try {
+        const response = await searchPoliciesByEmployeeCode(normalizedEmpCode);
+        const rows = Array.isArray(response.data) ? response.data : response.data?.data || [];
+        fetchedPolicies.value = mapPolicies(rows).filter(
+          (policy) => policy.empCode === normalizedEmpCode
+        );
+
+        if (props.policyMode === "auto") {
+          formData.value.policyNumber = fetchedPolicies.value[0]?.policyNumber ?? "";
+        }
+      } catch (error) {
+        console.error("Failed to load policies for employee code", error);
+        fetchedPolicies.value = [];
+      } finally {
+        isLoadingPolicies.value = false;
+      }
+    }, 350);
   }
 );
 
@@ -129,6 +173,7 @@ const handleConfirm = () => {
             id="remitPolicyNumber"
             v-model="formData.policyNumber"
             required
+            :disabled="isLoadingPolicies"
           >
             <option value="">Select a policy</option>
             <option
@@ -158,7 +203,7 @@ const handleConfirm = () => {
             v-if="formData.empCode && availablePolicies.length === 0"
             class="text-muted"
           >
-            No {{ moduleType }} policies found for this employee code
+            {{ isLoadingPolicies ? 'Loading policies...' : `No ${moduleType} policies found for this employee code` }}
           </small>
           <small
             v-if="policyMode === 'auto' && formData.policyNumber"
