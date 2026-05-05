@@ -88,22 +88,44 @@ export const createRemittanceService = async (data: {
   }
 
   try {
-    // Look up employee_policy_id using empCode and policyNumber
-    const [rows]: any = await db.query(
-      `SELECT id FROM employee_policy WHERE employee_code = ? AND policy_no = ?`,
-      [empCode, policyNumber]
-    );
-
-    if (!rows || rows.length === 0) {
-      throw new Error("Policy not found for this employee");
+    // Convert empCode to number since employee_code is likely stored as integer
+    const empCodeNum = parseInt(empCode, 10);
+    
+    console.log("🔍 Looking up policy:", { empCodeNum, policyNumber });
+    
+    if (isNaN(empCodeNum)) {
+      throw new Error("Invalid employee code format");
     }
 
-    const employee_policy_id = rows[0].id;
+    // Look up employee_policy_id using empCode and policyNumber
+    const [rows]: any = await db.query(
+      `SELECT employee_policy_id FROM employee_policy WHERE employee_code = ? AND policy_no = ?`,
+      [empCodeNum, policyNumber]
+    );
+
+    console.log("📋 Query result:", rows);
+
+    if (!rows || rows.length === 0) {
+      throw new Error(`Policy not found for employee ${empCode} with policy number ${policyNumber}`);
+    }
+
+    const employee_policy_id = rows[0].employee_policy_id;
+
+    // Convert `YYYY-MM` (from <input type="month">) to `YYYY-MM-01` for MySQL DATE columns
+    const toSqlDate = (ym: string) => {
+      if (!/^\d{4}-\d{2}$/.test(ym)) {
+        throw new Error("Invalid month format, expected YYYY-MM");
+      }
+      return `${ym}-01`;
+    };
+
+    const salaryMonthDate = toSqlDate(salaryMonth);
+    const dueMonthDate = toSqlDate(dueMonth);
 
     const result = await createRemittanceRepo({
       employee_policy_id,
-      salary_month: salaryMonth,
-      due_month: dueMonth,
+      salary_month: salaryMonthDate,
+      due_month: dueMonthDate,
       amount_deducted: amountDeducted,
       policy_cheque_id: chequeId ? Number(chequeId) : undefined
     });

@@ -37,14 +37,20 @@ const fetchedPolicies = ref<InsurancePolicyOption[]>([]);
 const isLoadingPolicies = ref(false);
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
-const normalizeEmployeeCode = (value: string) => value.trim().toUpperCase();
+const normalizeEmployeeCode = (value: string) => value.trim();
 
 const mapPolicies = (rows: any[]): InsurancePolicyOption[] =>
   rows.map((policy) => ({
     id: Number(policy.id ?? policy.employee_policy_id ?? 0),
-    empCode: String(policy.employee_code ?? policy.empCode ?? "").toUpperCase(),
+    empCode: String(policy.employee_code ?? policy.empCode ?? ""),
     empName: String(policy.employee_name ?? policy.empName ?? ""),
-    policyNumber: String(policy.policy_no ?? policy.policyNumber ?? policy.sliPolicyNumber ?? policy.gisPolicyNumber ?? ""),
+    policyNumber: String(
+      policy.policy_no ??
+        policy.policyNumber ??
+        policy.sliPolicyNumber ??
+        policy.gisPolicyNumber ??
+        ""
+    ),
     policyType: policy.policy_type ?? (policy.sliPolicyNumber ? "SLI" : "GIS"),
     premium: Number(policy.premium ?? 0),
     dateOfMaturity: String(policy.maturity_date ?? policy.dateOfMaturity ?? ""),
@@ -52,12 +58,6 @@ const mapPolicies = (rows: any[]): InsurancePolicyOption[] =>
 
 const availablePolicies = computed(() => {
   return fetchedPolicies.value;
-});
-
-const selectedPolicy = computed(() => {
-  return availablePolicies.value.find(
-    (p) => p.policyNumber === formData.value.policyNumber
-  );
 });
 
 const selectedEmpName = computed(() => availablePolicies.value[0]?.empName ?? "");
@@ -97,7 +97,9 @@ watch(
       isLoadingPolicies.value = true;
       try {
         const response = await searchPoliciesByEmployeeCode(normalizedEmpCode);
-        const rows = Array.isArray(response.data) ? response.data : response.data?.data || [];
+        const rows = Array.isArray(response.data)
+          ? response.data
+          : response.data?.data || [];
         fetchedPolicies.value = mapPolicies(rows).filter(
           (policy) => policy.empCode === normalizedEmpCode
         );
@@ -203,7 +205,11 @@ const handleConfirm = () => {
             v-if="formData.empCode && availablePolicies.length === 0"
             class="text-muted"
           >
-            {{ isLoadingPolicies ? 'Loading policies...' : `No ${moduleType} policies found for this employee code` }}
+            {{
+              isLoadingPolicies
+                ? "Loading policies..."
+                : `No ${moduleType} policies found for this employee code`
+            }}
           </small>
           <small
             v-if="policyMode === 'auto' && formData.policyNumber"

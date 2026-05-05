@@ -81,7 +81,7 @@ export const createRemittance = async (
 ) => {
   try {
     const body = await parseBody(req);
-
+    
     const {
       empCode,
       policyNumber,
@@ -90,7 +90,14 @@ export const createRemittance = async (
       amountDeducted,
       chequeId
     } = body;
-
+    console.log("📨 Remittance Request Body:", { 
+      empCode, 
+      policyNumber, 
+      salaryMonth, 
+      dueMonth, 
+      amountDeducted, 
+      chequeId 
+    });
     // 🔒 Basic validation
     if (
       !empCode ||
@@ -104,7 +111,7 @@ export const createRemittance = async (
       return;
     }
 
-    // 👇 call service (we will create this next)
+    //  call service 
     const result = await createRemittanceService({
       empCode,
       policyNumber,
