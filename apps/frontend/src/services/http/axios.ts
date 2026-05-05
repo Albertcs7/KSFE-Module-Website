@@ -39,6 +39,15 @@ axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
     const originalRequest = error.config as any;
+    const requestUrl = String(originalRequest?.url ?? "");
+    const isAuthEndpoint =
+      requestUrl.includes("/auth/login") ||
+      requestUrl.includes("/auth/refresh") ||
+      requestUrl.includes("/auth/logout");
+
+    if (isAuthEndpoint) {
+      return Promise.reject(error);
+    }
 
     if (
       error.response?.status === 401 &&

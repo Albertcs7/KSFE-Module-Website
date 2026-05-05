@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-import type { InsuranceModuleType, InsurancePolicyForm } from '../../types/insurance.types'
-import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
+import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
+import { ref, watch } from 'vue';
+import type { InsuranceModuleType, InsurancePolicyForm } from '../../types/insurance.types';
 
 const props = defineProps<{
   isOpen: boolean
@@ -20,6 +20,7 @@ const emptyForm = (): InsurancePolicyForm => ({
   empCode: '',
   empName: '',
   policyNumber: '',
+  policyType: 'SLI',
   premium: 0,
   dateOfMaturity: '',
 })

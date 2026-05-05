@@ -1,5 +1,30 @@
 import { db } from "../../database/mysql";
 
+type SearchPolicyRow = {
+  employee_policy_id: number;
+  employee_code: number | string;
+  employee_name: string;
+  policy_no: string;
+  policy_type: string;
+  premium: number;
+  maturity_date: string | null;
+  status?: number;
+  [key: string]: any;
+};
+
+type SearchRemittanceRow = {
+  policy_remittance_id: number;
+  employee_policy_id: number;
+  salary_month: string;
+  due_month: string;
+  amount_deducted: number;
+  policy_cheque_id: number | null;
+  employee_code: number | string;
+  employee_name: string;
+  policy_no: string;
+  policy_type: string;
+};
+
 //Viewing employee policies
 
 export const getAllPoliciesRepo = async () => {
@@ -44,6 +69,35 @@ export const searchPoliciesRepo = async (params: {
 
   const [rows] = await db.query(query, values);
   return rows;
+};
+
+export const getPolicyRemittancesRepo = async (policyIds: number[]) => {
+  if (policyIds.length === 0) {
+    return [];
+  }
+
+  const placeholders = policyIds.map(() => "?").join(", ");
+  const query = `
+    SELECT
+      pr.policy_remittance_id,
+      pr.employee_policy_id,
+      DATE_FORMAT(pr.salary_month, '%Y-%m') AS salary_month,
+      DATE_FORMAT(pr.due_month, '%Y-%m') AS due_month,
+      pr.amount_deducted,
+      pr.policy_cheque_id,
+      ep.employee_code,
+      ep.employee_name,
+      ep.policy_no,
+      ep.policy_type
+    FROM policy_remittance pr
+    INNER JOIN employee_policy ep ON ep.employee_policy_id = pr.employee_policy_id
+    WHERE pr.employee_policy_id IN (${placeholders})
+    ORDER BY pr.salary_month DESC, pr.due_month DESC, pr.policy_remittance_id DESC
+    LIMIT 10
+  `;
+
+  const [rows] = await db.query(query, policyIds);
+  return rows as SearchRemittanceRow[];
 };
 
 // Get count of search results for pagination metadata
@@ -91,6 +145,27 @@ export const createPolicyRepo = async (data: any) => {
     data.premium,
     data.maturity_date || null,
     data.status ?? 1
+  ];
+
+  const [result]: any = await db.query(query, values);
+  return result;
+};
+
+// UPDATE POLICY
+
+export const updatePolicyRepo = async (policyNo: string, data: any) => {
+  const query = `
+    UPDATE employee_policy 
+    SET employee_name = ?, policy_type = ?, premium = ?, maturity_date = ?
+    WHERE policy_no = ?
+  `;
+
+  const values = [
+    data.employee_name,
+    data.policy_type,
+    data.premium,
+    data.maturity_date || null,
+    policyNo
   ];
 
   const [result]: any = await db.query(query, values);

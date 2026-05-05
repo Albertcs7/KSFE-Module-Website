@@ -205,6 +205,13 @@ export const useAuthStore = defineStore("auth", {
         // Persist user data to localStorage (recovered on page reload)
         localStorage.setItem("auth_user", JSON.stringify(normalizedUser));
 
+      } catch (error: any) {
+        const message =
+          error?.response?.data?.message ||
+          error?.response?.data?.errors?.message ||
+          error?.message ||
+          "Login failed";
+        throw new Error(message);
       } finally {
         this.loading = false;
       }

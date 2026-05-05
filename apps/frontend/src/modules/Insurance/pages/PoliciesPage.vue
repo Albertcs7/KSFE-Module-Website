@@ -6,7 +6,8 @@
  * It integrates the search bar, the action modals (Add, Remittance, Cheque),
  * and handles data display for a selected employee.
  */
-import { createPolicy, createRemittance, getPolicies } from '@/services/api/insurance.api'
+import { createPolicy, createRemittance, getPolicies, searchPolicies, updatePolicy } from '@/services/api/insurance.api'
+import type { UpdatePolicyPayload } from '@/services/types/insurance.types'
 import { computed, onMounted, ref, watch } from 'vue'
 import SearchBar, { type SearchBarItem } from '../../../components/searchBar/SearchBar.vue'
 import BaseButton from '../../../components/ui/BaseButton.vue'
@@ -45,6 +46,7 @@ interface UserPolicy {
 
 // --- BACKEND DATA STATE ---
 const policies = ref<UserPolicy[]>([])
+const searchRemittances = ref<any[]>([])
 const isLoadingUsers = ref(false)
 const loadError = ref('')
 
@@ -52,11 +54,13 @@ const fetchPolicies = async (empCode?: string) => {
   isLoadingUsers.value = true
   loadError.value = ''
   try {
-    const res = await getPolicies(empCode)
-    const data = Array.isArray(res.data) ? res.data : res.data.data || []
+    const hasSearchTerm = !!empCode && empCode.trim().length > 0
+    const res = hasSearchTerm ? await searchPolicies(empCode) : await getPolicies()
+    const payload = res.data || {}
+    const data = Array.isArray(payload) ? payload : payload.data || []
 
     policies.value = data.map((p: any) => ({
-      id: p.id,
+      id: p.id ?? p.employee_policy_id,
       empCode: String(p.employee_code || p.empCode),
       empName: p.employee_name || p.empName,
       policyNumber: p.policy_no || p.sliPolicyNumber || p.gisPolicyNumber || p.policyNumber,
@@ -64,9 +68,27 @@ const fetchPolicies = async (empCode?: string) => {
       premium: p.premium || 0,
       dateOfMaturity: p.maturity_date || p.dateOfMaturity,
     }))
+
+    const apiRemittances = Array.isArray(payload.remittances) ? payload.remittances : []
+    searchRemittances.value = apiRemittances.map((r: any) => ({
+      id: r.id ?? r.policy_remittance_id,
+      empCode: String(r.empCode || r.employee_code || ''),
+      empName: r.empName || r.employee_name || '',
+      policyNumber: r.policyNumber || r.policy_no || '',
+      policyType: r.policyType || r.policy_type || 'SLI',
+      salaryMonth: r.salaryMonth || r.salary_month || '',
+      dueMonth: r.dueMonth || r.due_month || '',
+      amountDeducted: r.amountDeducted ?? r.amount_deducted ?? 0,
+      chequeId: r.chequeId ?? r.policy_cheque_id ?? '',
+    }))
+
+    if (!hasSearchTerm) {
+      searchRemittances.value = []
+    }
   } catch (err) {
     console.error('Failed to fetch policies', err)
     loadError.value = 'Failed to load policies'
+    searchRemittances.value = []
   } finally {
     isLoadingUsers.value = false
   }
@@ -183,6 +205,19 @@ const selectedEmpName = computed(() => {
 const displayedRemittances = computed(() => {
   if (selectedEmpCode.value) {
     const searchCode = selectedEmpCode.value.toUpperCase()
+
+    const apiRems = searchRemittances.value
+      .filter((r: any) => String(r.empCode || '').toUpperCase() === searchCode)
+      .map((r: any) => ({
+        ...r,
+        policyType: r.policyType || 'SLI',
+        policyNumber: r.policyNumber || r.policy_no || r.sliPolicyNumber || r.gisPolicyNumber,
+      }))
+
+    if (apiRems.length > 0) {
+      return apiRems
+    }
+
     // Combine remittances from both stores to display them together
     const sliRems = sliStore.remittances.filter(r => r.empCode.toUpperCase() === searchCode).map(r => ({...r, policyType: 'SLI', policyNumber: r.sliPolicyNumber}))
     const gisRems = gisStore.remittances.filter(r => r.empCode.toUpperCase() === searchCode).map(r => ({...r, policyType: 'GIS', policyNumber: r.gisPolicyNumber}))
@@ -277,29 +312,25 @@ const handleAddUser = async (user: InsurancePolicyForm) => {
 
 const handleUpdateUser = async (user: InsurancePolicyForm) => {
   try {
-    const pType = user.policyType || 'SLI'
-    if (pType === 'SLI') {
-      await sliStore.updateUser({
-        empCode: user.empCode,
-        empName: user.empName,
-        sliPolicyNumber: user.policyNumber,
-        premium: user.premium,
-        dateOfMaturity: user.dateOfMaturity,
-      })
-    } else {
-      await gisStore.updateUser({
-        empCode: user.empCode,
-        empName: user.empName,
-        gisPolicyNumber: user.policyNumber,
-        premium: user.premium,
-        dateOfMaturity: user.dateOfMaturity,
-      })
+    // Prepare payload with only fields that backend expects
+    const payload: UpdatePolicyPayload = {
+      employee_name: user.empName,
+      policy_type: user.policyType || 'SLI',
+      premium: Number(user.premium),
+      maturity_date: user.dateOfMaturity,
     }
+
+    // Call API with policy number in URL path
+    await updatePolicy(user.policyNumber, payload)
+
+    // Refresh policies list and close modal
     await fetchPolicies()
     isEditUserOpen.value = false
     toast.success('Policy details updated successfully!')
-  } catch {
-    toast.error('Unable to update policy details. Please try again.')
+  } catch (err: any) {
+    console.error('Update policy error:', err)
+    const errorMsg = err?.response?.data?.message || 'Unable to update policy details. Please try again.'
+    toast.error(errorMsg)
   }
 }
 
@@ -345,6 +376,12 @@ const handleAddCheque = async (cheque: InsuranceChequeForm) => {
   } catch {
     toast.error('Unable to save cheque details. Please try again.')
   }
+}
+
+const formatDateOnly = (dateString?: string): string => {
+  if (!dateString) return ''
+  // Extract only the date portion (YYYY-MM-DD) from ISO string
+  return dateString.split('T')[0] || ''
 }
 </script>
 
@@ -459,7 +496,7 @@ const handleAddCheque = async (cheque: InsuranceChequeForm) => {
                   <strong>{{ user.policyNumber }}</strong>
                 </td>
                 <td>₹{{ user.premium }}</td>
-                <td>{{ user.dateOfMaturity }}</td>
+                <td>{{ formatDateOnly(user.dateOfMaturity) }}</td>
                 <td class="actions-cell">
                   <BaseButton variant="edit" @click="openEditModal(user)" title="Edit">
                     <template #icon>
@@ -586,7 +623,7 @@ const handleAddCheque = async (cheque: InsuranceChequeForm) => {
 
     <main v-else class="policies-content">
       <div class="content-section">
-        <h3 style="margin-bottom: 1.5rem;">All Policies Overview</h3>
+        <h3 style="margin-bottom: 1.5rem">All Policies Overview</h3>
         <div class="data-table-container">
           <table class="data-table">
             <thead>
@@ -600,18 +637,39 @@ const handleAddCheque = async (cheque: InsuranceChequeForm) => {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="policy in paginatedPolicies" :key="policy.id || policy.policyNumber">
-                <td><strong>{{ policy.empCode }}</strong></td>
+              <tr
+                v-for="policy in paginatedPolicies"
+                :key="policy.id || policy.policyNumber"
+              >
+                <td>
+                  <strong>{{ policy.empCode }}</strong>
+                </td>
                 <td>{{ policy.empName }}</td>
                 <td>
-                  <span :class="'badge ' + policy.policyType.toLowerCase()">{{ policy.policyType }}</span>
+                  <span :class="'badge ' + policy.policyType.toLowerCase()">{{
+                    policy.policyType
+                  }}</span>
                 </td>
                 <td>₹{{ policy.premium }}</td>
-                <td>{{ policy.dateOfMaturity }}</td>
+                <td>{{ formatDateOnly(policy.dateOfMaturity) }}</td>
                 <td class="actions-cell">
-                  <BaseButton variant="secondary" @click="viewEmployee(policy.empCode)" title="View Details" style="padding: 0.4rem 0.6rem; font-size: 0.8rem; border-radius: 6px;">
+                  <BaseButton
+                    variant="secondary"
+                    @click="viewEmployee(policy.empCode)"
+                    title="View Details"
+                    style="padding: 0.4rem 0.6rem; font-size: 0.8rem; border-radius: 6px"
+                  >
                     <template #icon>
-                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <svg
+                        viewBox="0 0 24 24"
+                        width="14"
+                        height="14"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
                         <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                         <circle cx="12" cy="12" r="3"></circle>
                       </svg>
@@ -621,18 +679,24 @@ const handleAddCheque = async (cheque: InsuranceChequeForm) => {
                 </td>
               </tr>
               <tr v-if="paginatedPolicies.length === 0">
-                <td colspan="6" class="empty-state">
-                  No policies found in the system.
-                </td>
+                <td colspan="6" class="empty-state">No policies found in the system.</td>
               </tr>
             </tbody>
           </table>
         </div>
-        
+
         <div class="pagination-controls" v-if="totalPages > 1">
-          <button class="pagination-btn" :disabled="currentPage === 1" @click="prevPage">Previous</button>
+          <button class="pagination-btn" :disabled="currentPage === 1" @click="prevPage">
+            Previous
+          </button>
           <span class="pagination-info">Page {{ currentPage }} of {{ totalPages }}</span>
-          <button class="pagination-btn" :disabled="currentPage === totalPages" @click="nextPage">Next</button>
+          <button
+            class="pagination-btn"
+            :disabled="currentPage === totalPages"
+            @click="nextPage"
+          >
+            Next
+          </button>
         </div>
       </div>
     </main>

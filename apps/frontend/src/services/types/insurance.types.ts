@@ -7,6 +7,13 @@ export interface CreatePolicyPayload {
   maturity_date: string;
 }
 
+export interface UpdatePolicyPayload {
+  employee_name: string;
+  policy_type: "GIS" | "SLI";
+  premium: number;
+  maturity_date: string;
+}
+
 export interface CreateRemittancePayload {
   employee_policy_id: number
   salary_month: string

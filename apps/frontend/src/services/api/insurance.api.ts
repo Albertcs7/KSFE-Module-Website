@@ -1,5 +1,5 @@
 import api from "../http/axios";
-import type { CreatePolicyPayload } from "../types/insurance.types";
+import type { CreatePolicyPayload, UpdatePolicyPayload } from "../types/insurance.types";
 
 /**
  * GET  policies by employee code
@@ -56,6 +56,13 @@ export const createPolicy = (data: CreatePolicyPayload) => {
  */
 export const deletePolicy = (policyNo: string) => {
   return api.delete(`/insurance/policies/${policyNo}`);
+};
+
+/**
+ * UPDATE policy
+ */
+export const updatePolicy = (policyNo: string, data: UpdatePolicyPayload) => {
+  return api.put(`/insurance/policies/${policyNo}`, data);
 };
 
 /**

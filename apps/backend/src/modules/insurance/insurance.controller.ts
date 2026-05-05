@@ -1,6 +1,6 @@
 import { IncomingMessage, ServerResponse } from "http";
 import { parseBody } from "../../utils/parseBody";
-import { createPolicyService, createRemittanceService, getAllPoliciesService, searchPoliciesService } from "./insurance.service";
+import { createPolicyService, createRemittanceService, getAllPoliciesService, searchPoliciesService, updatePolicyService } from "./insurance.service";
 
 export const getAllPolicies = async (
   req: IncomingMessage,
@@ -132,5 +132,53 @@ export const createRemittance = async (
 
     res.writeHead(400);
     res.end(JSON.stringify({ message: error.message }));
+  }
+};
+
+/* UPDATE POLICY */
+
+export const updatePolicy = async (
+  req: IncomingMessage,
+  res: ServerResponse
+) => {
+  try {
+    const body = await parseBody(req);
+
+    // Extract policy number from URL
+    const url = new URL(req.url || "", `http://${req.headers.host}`);
+    const pathParts = url.pathname.split("/");
+    const policyNo = pathParts[pathParts.length - 1];
+
+    if (!policyNo) {
+      res.writeHead(400);
+      res.end(JSON.stringify({ 
+        message: "Policy number is required" 
+      }));
+      return;
+    }
+
+    // Validate required fields in request body
+    if (!body.employee_name || !body.policy_type || body.premium === undefined) {
+      res.writeHead(400);
+      res.end(JSON.stringify({ 
+        message: "Missing required fields: employee_name, policy_type, premium" 
+      }));
+      return;
+    }
+
+    const result = await updatePolicyService(policyNo, body);
+
+    res.writeHead(200);
+    res.end(JSON.stringify({
+      message: "Policy updated successfully",
+      data: result
+    }));
+
+  } catch (error: any) {
+    console.error('Update policy error:', error);
+    res.writeHead(400);
+    res.end(JSON.stringify({ 
+      message: error.message || "Failed to update policy" 
+    }));
   }
 };
