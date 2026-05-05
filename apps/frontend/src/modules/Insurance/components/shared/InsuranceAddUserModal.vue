@@ -2,6 +2,7 @@
 import { ref, watch } from "vue";
 import type { InsurancePolicyForm } from "../../types/insurance.types";
 import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
+import { searchPolicies } from "@/services/api/insurance.api";
 
 const props = defineProps<{
   isOpen: boolean;
@@ -33,6 +34,38 @@ watch(
       formData.value = emptyForm();
       showConfirm.value = false;
     }
+  }
+);
+
+let searchTimeout: ReturnType<typeof setTimeout> | null = null;
+
+watch(
+  () => formData.value.empCode,
+  (newCode) => {
+    if (!newCode || newCode.trim() === "") return;
+
+    if (searchTimeout) clearTimeout(searchTimeout);
+
+    searchTimeout = setTimeout(async () => {
+      try {
+        const res = await searchPolicies(newCode);
+        const data = res.data?.data || res.data || [];
+        
+        // Find exact match
+        const match = data.find(
+          (p: any) => String(p.employee_code || p.empCode) === newCode
+        );
+        
+        if (match) {
+          const fetchedName = match.employee_name || match.empName || "";
+          if (fetchedName) {
+            formData.value.empName = fetchedName;
+          }
+        }
+      } catch (err) {
+        console.error("Failed to auto-fetch employee name", err);
+      }
+    }, 500); // Debounce to avoid too many requests
   }
 );
 
