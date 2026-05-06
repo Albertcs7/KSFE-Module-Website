@@ -152,16 +152,23 @@ const searchItems = computed<SearchBarItem[]>(() => {
     // if (hasSearchTerm) {
     //   selectedEmpCode.value = String(empCode).trim()
     // }
-const handleSearchSelect = (item: SearchBarItem) => {
-  selectedEmpCode.value = item.label
+const loadEmployeeDetails = async (empCode: string) => {
+  const normalizedEmpCode = empCode.trim().toUpperCase()
+  selectedEmpCode.value = normalizedEmpCode
+  await fetchPolicies(normalizedEmpCode)
+}
+
+const handleSearchSelect = async (item: SearchBarItem) => {
+  await loadEmployeeDetails(item.label)
 }
       selectedEmpCode.value = null
 const handleSearchInput = (value: string) => {
   searchQuery.value = value
 }
 
-const clearSelection = () => {
+const clearSelection = async () => {
   selectedEmpCode.value = null
+  await fetchPolicies()
 }
 
 watch(searchQuery, (val) => {
@@ -200,8 +207,8 @@ const prevPage = () => {
   if (currentPage.value > 1) currentPage.value--
 }
 
-const viewEmployee = (empCode: string) => {
-  selectedEmpCode.value = empCode
+const viewEmployee = async (empCode: string) => {
+  await loadEmployeeDetails(empCode)
 }
 
 // --- DATA COMPUTATION FOR TABLES ---

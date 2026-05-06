@@ -79,12 +79,12 @@ export const getPolicyRemittancesRepo = async (policyIds: number[]) => {
   const placeholders = policyIds.map(() => "?").join(", ");
   const query = `
     SELECT
-      pr.policy_remittance_id,
-      pr.employee_policy_id,
-      DATE_FORMAT(pr.salary_month, '%Y-%m') AS salary_month,
-      DATE_FORMAT(pr.due_month, '%Y-%m') AS due_month,
-      pr.amount_deducted,
-      pr.policy_cheque_id,
+      pr_ranked.policy_remittance_id,
+      pr_ranked.employee_policy_id,
+      DATE_FORMAT(pr_ranked.salary_month, '%Y-%m') AS salary_month,
+      DATE_FORMAT(pr_ranked.due_month, '%Y-%m') AS due_month,
+      pr_ranked.amount_deducted,
+      pr_ranked.policy_cheque_id,
       ep.employee_code,
       ep.employee_name,
       ep.policy_no,
