@@ -1,8 +1,10 @@
 import type { RouteRecordRaw } from 'vue-router'
 
+import DashboardLayout from '../layouts/DashboardLayout.vue'
 import InsuranceLayout from '../modules/Insurance/layout/InsuranceLayout.vue'
-import PoliciesPage from '../modules/Insurance/pages/PoliciesPage.vue'
 import MonthlyReportPage from '../modules/Insurance/pages/MonthlyReportPage.vue'
+import PoliciesPage from '../modules/Insurance/pages/PoliciesPage.vue'
+import HomePage from './pages/HomePage.vue'
 import LoginPage from './pages/LoginPage.vue'
 import UnauthorizedPage from './pages/UnauthorizedPage.vue'
 
@@ -19,7 +21,14 @@ export const appRoutes: RouteRecordRaw[] = [
   },
   {
     path: '/',
-    redirect: '/insurance',
+    component: DashboardLayout,
+    children: [
+      {
+        path: '',
+        name: 'home',
+        component: HomePage,
+      },
+    ],
   },
   {
     path: '/insurance',

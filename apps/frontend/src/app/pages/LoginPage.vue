@@ -28,7 +28,7 @@ const handleLogin = async () => {
       token: true,
     })
 
-    router.push('/insurance')
+    router.push('/')
   } catch (error: any) {
     errorMsg.value = error?.message || 'Login failed'
   } finally {
@@ -45,7 +45,7 @@ const handleLogin = async () => {
         <div class="brand-content">
           <img src="/KSFE SIDE LOGO.png" alt="KSFE Logo" class="login-logo" />
           <h1 class="brand-title">Welcome to KSFE Hub</h1>
-          <p class="brand-subtitle">Secure, comprehensive management for internal modules and insurance tracking.</p>
+          <p class="brand-subtitle">Sign in to access your dashboard, then move into insurance and other modules from the navigation menu.</p>
         </div>
         <div class="brand-overlay"></div>
       </div>
