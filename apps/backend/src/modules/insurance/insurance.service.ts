@@ -81,7 +81,7 @@ export const searchPoliciesService = async (params: {
     chequeId: remittance.policy_cheque_id ? String(remittance.policy_cheque_id) : "",
   }));
 
-  return {
+  return { 
     data: policyData,
     remittances: remittanceData,
     total,

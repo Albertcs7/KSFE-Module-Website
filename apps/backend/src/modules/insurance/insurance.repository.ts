@@ -89,11 +89,16 @@ export const getPolicyRemittancesRepo = async (policyIds: number[]) => {
       ep.employee_name,
       ep.policy_no,
       ep.policy_type
-    FROM policy_remittance pr
-    INNER JOIN employee_policy ep ON ep.employee_policy_id = pr.employee_policy_id
-    WHERE pr.employee_policy_id IN (${placeholders})
-    ORDER BY pr.salary_month DESC, pr.due_month DESC, pr.policy_remittance_id DESC
-    LIMIT 10
+    FROM (
+      SELECT
+        pr.*,
+        ROW_NUMBER() OVER (PARTITION BY pr.employee_policy_id ORDER BY pr.salary_month DESC, pr.due_month DESC, pr.policy_remittance_id DESC) as rn
+      FROM policy_remittance pr
+      WHERE pr.employee_policy_id IN (${placeholders})
+    ) pr_ranked
+    INNER JOIN employee_policy ep ON ep.employee_policy_id = pr_ranked.employee_policy_id
+    WHERE pr_ranked.rn <= 10
+    ORDER BY pr_ranked.salary_month DESC, pr_ranked.due_month DESC, pr_ranked.policy_remittance_id DESC
   `;
 
   const [rows] = await db.query(query, policyIds);

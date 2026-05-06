@@ -15,9 +15,9 @@ import { useToast } from '../../../composables/useToast'
 import { useGISStore } from '../store/useGISStore'
 import { useSLIStore } from '../store/useSLIStore'
 import type {
-  InsuranceChequeForm,
-  InsurancePolicyForm,
-  InsurancePolicyOption, InsuranceRemittanceForm
+    InsuranceChequeForm,
+    InsurancePolicyForm,
+    InsurancePolicyOption, InsuranceRemittanceForm
 } from '../types/insurance.types'
 
 // Import Modals for Actions
@@ -46,6 +46,7 @@ interface UserPolicy {
 
 // --- BACKEND DATA STATE ---
 const policies = ref<UserPolicy[]>([])
+const allPolicies = ref<UserPolicy[]>([]) // ✅ Keep all policies for modals
 const searchRemittances = ref<any[]>([])
 const isLoadingUsers = ref(false)
 const loadError = ref('')
@@ -59,7 +60,7 @@ const fetchPolicies = async (empCode?: string) => {
     const payload = res.data || {}
     const data = Array.isArray(payload) ? payload : payload.data || []
 
-    policies.value = data.map((p: any) => ({
+    const transformedData = data.map((p: any) => ({
       id: p.id ?? p.employee_policy_id,
       empCode: String(p.employee_code || p.empCode),
       empName: p.employee_name || p.empName,
@@ -68,6 +69,12 @@ const fetchPolicies = async (empCode?: string) => {
       premium: p.premium || 0,
       dateOfMaturity: p.maturity_date || p.dateOfMaturity,
     }))
+
+    policies.value = transformedData
+    // ✅ Only update allPolicies when fetching all (no search term)
+    if (!hasSearchTerm) {
+      allPolicies.value = transformedData
+    }
 
     const apiRemittances = Array.isArray(payload.remittances) ? payload.remittances : []
     searchRemittances.value = apiRemittances.map((r: any) => ({
@@ -227,8 +234,8 @@ const displayedRemittances = computed(() => {
 })
 
 const policyOptions = computed<InsurancePolicyOption[]>(() =>
-  policies.value.map(user => ({
-    id: user.id, // 👈 ADD THIS
+  allPolicies.value.map(user => ({
+    id: user.id,
     empCode: user.empCode,
     empName: user.empName,
     policyNumber: user.policyNumber,
@@ -762,6 +769,7 @@ const formatDateOnly = (dateString?: string): string => {
 .policies-page {
   padding: 2rem;
   font-family: inherit;
+  font-size: 2.5rem;
   display: flex;
   flex-direction: column;
   gap: 2rem;
@@ -826,13 +834,13 @@ const formatDateOnly = (dateString?: string): string => {
 .emp-info h2 {
   margin: 0 0 0.2rem 0;
   color: #0f172a;
-  font-size: 1.4rem;
+  font-size: 1.6rem;
 }
 
 .emp-info p {
   margin: 0;
   color: #64748b;
-  font-size: 0.95rem;
+  font-size: 1.05rem;
 }
 
 .emp-info strong {
@@ -853,14 +861,14 @@ const formatDateOnly = (dateString?: string): string => {
   margin-top: 1rem;
   margin-bottom: 0.5rem;
   color: #334155;
-  font-size: 1.5rem;
+  font-size: 1.7rem;
 }
 
 .content-section h3 {
   color: #1d3a6d;
   margin-top: 0;
   margin-bottom: 1rem;
-  font-size: 1.2rem;
+  font-size: 1.35rem;
 }
 
 .data-table-container {
@@ -877,7 +885,7 @@ const formatDateOnly = (dateString?: string): string => {
   background: #f8fafc;
   padding: 1rem;
   color: #64748b;
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -888,7 +896,7 @@ const formatDateOnly = (dateString?: string): string => {
   padding: 1rem;
   border-bottom: 1px solid #e2e8f0;
   color: #334155;
-  font-size: 0.95rem;
+  font-size: 1.05rem;
   vertical-align: middle;
 }
 
@@ -912,7 +920,7 @@ const formatDateOnly = (dateString?: string): string => {
   display: inline-block;
   padding: 0.25rem 0.5rem;
   border-radius: 4px;
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   font-weight: 600;
   text-transform: uppercase;
 }
@@ -942,7 +950,7 @@ const formatDateOnly = (dateString?: string): string => {
   border: 1px solid #cbd5e1;
   border-radius: 6px;
   padding: 0.5rem 1rem;
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   font-weight: 600;
   color: #1d3a6d;
   cursor: pointer;
@@ -960,7 +968,7 @@ const formatDateOnly = (dateString?: string): string => {
 }
 
 .pagination-info {
-  font-size: 0.9rem;
+  font-size: 1rem;
   color: #64748b;
   font-weight: 500;
 }

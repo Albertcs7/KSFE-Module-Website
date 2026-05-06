@@ -214,6 +214,7 @@ const handleMenuClick = (): void => {
   transition: width 0.28s ease, transform 0.28s ease;
   z-index: 35;
   overflow: hidden;
+  font-size: 1.05rem;
 }
 
 .sidebar.collapsed {
@@ -262,7 +263,7 @@ const handleMenuClick = (): void => {
   margin: 0;
   padding: 0.25rem 0.75rem 0;
   color: rgba(219, 234, 254, 0.8);
-  font-size: 0.68rem;
+  font-size: 0.82rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
@@ -319,6 +320,7 @@ const handleMenuClick = (): void => {
 
 .menu-label {
   font-weight: 600;
+  font-size: 1.02rem;
   white-space: nowrap;
 }
 
@@ -374,7 +376,7 @@ const handleMenuClick = (): void => {
   border-radius: 0.5rem;
   color: rgba(239, 246, 255, 0.7);
   text-decoration: none;
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   font-weight: 500;
   transition: all 0.2s ease;
 }
