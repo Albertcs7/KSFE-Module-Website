@@ -1,5 +1,5 @@
 import { db } from "../../database/mysql";
-import { attachChequeToRemittancesRepo, createChequeRepo, createPolicyRepo, createRemittanceRepo, deletePolicyRemittancesRepo, deletePolicyRepo, getAllPoliciesRepo, getPolicyRemittancesRepo, searchPoliciesCountRepo, searchPoliciesRepo, updatePolicyRepo } from "./insurance.repository";
+import { attachChequeToRemittancesRepo, createChequeRepo, createPolicyRepo, createRemittanceRepo, getAllPoliciesRepo, getPolicyRemittancesRepo, searchPoliciesCountRepo, searchPoliciesRepo, updatePolicyRepo } from "./insurance.repository";
 
 type SearchPolicyRow = {
   employee_policy_id: number;
