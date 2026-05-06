@@ -1,5 +1,5 @@
 import { db } from "../../database/mysql";
-import { createPolicyRepo, createRemittanceRepo, getAllPoliciesRepo, getPolicyRemittancesRepo, searchPoliciesCountRepo, searchPoliciesRepo, updatePolicyRepo } from "./insurance.repository";
+import { createPolicyRepo,createChequeRepo, createRemittanceRepo, getAllPoliciesRepo, getPolicyRemittancesRepo, searchPoliciesCountRepo, searchPoliciesRepo, updatePolicyRepo,attachChequeToRemittancesRepo } from "./insurance.repository";
 
 type SearchPolicyRow = {
   employee_policy_id: number;
@@ -235,6 +235,85 @@ export const updatePolicyService = async (policyNo: string, data: any) => {
     return result;
   } catch (err: any) {
     console.error(`❌ Error updating policy ${policyNo}:`, err.message);
+    throw err;
+  }
+};
+
+/*-------------------
+ADDING CHEQUE DETAILS
+---------------------*/
+
+export const createChequeAndAttachService = async (data: {
+  encashmentDate: string;
+  receiptNo: string;
+  salaryMonth: string; // YYYY-MM
+  policyType: 'GIS' | 'SLI';
+}) => {
+
+  const { encashmentDate, receiptNo, salaryMonth, policyType } = data;
+
+  // ✅ Validation
+  if (!encashmentDate || !receiptNo || !salaryMonth || !policyType) {
+    throw new Error("Missing required fields");
+  }
+
+  // Convert YYYY-MM → YYYY-MM-01
+  const toSqlDate = (ym: string) => {
+    if (!/^\d{4}-\d{2}$/.test(ym)) {
+      throw new Error("Invalid month format, expected YYYY-MM");
+    }
+    return `${ym}-01`;
+  };
+
+  const salaryMonthDate = toSqlDate(salaryMonth);
+
+  try {
+    // ✅ Step 1: Create cheque
+    const chequeResult: any = await createChequeRepo({
+      encashment_date: encashmentDate,
+      receipt_no: receiptNo,
+      salary_month: salaryMonthDate,
+      policy_type: policyType
+    });
+
+    const chequeId = chequeResult.insertId;
+
+    // ✅ Step 2: Find matching remittances
+    const [remittances]: any = await db.query(
+      `
+      SELECT pr.policy_remittance_id
+      FROM policy_remittance pr
+      INNER JOIN employee_policy ep 
+        ON ep.employee_policy_id = pr.employee_policy_id
+      WHERE pr.salary_month = ?
+        AND ep.policy_type = ?
+        AND pr.policy_cheque_id IS NULL
+      `,
+      [salaryMonthDate, policyType]
+    );
+
+    const remittanceIds = remittances.map((r: any) => r.policy_remittance_id);
+
+    // ✅ Step 3: Attach (only if exists)
+    if (remittanceIds.length > 0) {
+      await attachChequeToRemittancesRepo({
+        chequeId,
+        remittanceIds
+      });
+    }
+
+    return {
+      message: "Cheque created successfully",
+      chequeId,
+      attachedRemittances: remittanceIds.length
+    };
+
+  } catch (err: any) {
+
+    if (err.code === "ER_DUP_ENTRY") {
+      throw new Error("Cheque already exists for this month and type OR receipt number duplicate");
+    }
+
     throw err;
   }
 };

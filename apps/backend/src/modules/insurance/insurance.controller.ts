@@ -1,6 +1,6 @@
 import { IncomingMessage, ServerResponse } from "http";
 import { parseBody } from "../../utils/parseBody";
-import { createPolicyService, createRemittanceService, getAllPoliciesService, searchPoliciesService, updatePolicyService } from "./insurance.service";
+import { createPolicyService,createChequeAndAttachService , createRemittanceService, getAllPoliciesService, searchPoliciesService, updatePolicyService } from "./insurance.service";
 
 export const getAllPolicies = async (
   req: IncomingMessage,
@@ -179,6 +179,51 @@ export const updatePolicy = async (
     res.writeHead(400);
     res.end(JSON.stringify({ 
       message: error.message || "Failed to update policy" 
+    }));
+  }
+};
+
+/*-------------------
+ADDING CHEQUE DETAILS
+---------------------*/
+
+export const createCheque = async (
+  req: IncomingMessage,
+  res: ServerResponse
+) => {
+  try {
+    const body = await parseBody(req);
+
+    const {
+      encashmentDate,
+      receiptNo,
+      salaryMonth,
+      policyType
+    } = body;
+
+    // 🔒 Validation
+    if (!encashmentDate || !receiptNo || !salaryMonth || !policyType) {
+      res.writeHead(400);
+      res.end(JSON.stringify({ message: "Missing required fields" }));
+      return;
+    }
+
+    const result = await createChequeAndAttachService({
+      encashmentDate,
+      receiptNo,
+      salaryMonth,
+      policyType
+    });
+
+    res.writeHead(201);
+    res.end(JSON.stringify(result));
+
+  } catch (error: any) {
+    console.error("Cheque creation error:", error);
+
+    res.writeHead(400);
+    res.end(JSON.stringify({
+      message: error.message || "Failed to create cheque"
     }));
   }
 };

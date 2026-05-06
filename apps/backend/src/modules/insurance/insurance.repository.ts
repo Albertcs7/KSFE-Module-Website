@@ -204,3 +204,52 @@ export const createRemittanceRepo = async (data: {
   const [result]: any = await db.query(query, values);
   return result;
 };
+
+
+/*-------------------
+ADDING CHEQUE DETAILS
+---------------------*/
+
+export const createChequeRepo = async (data: {
+  encashment_date: string;
+  receipt_no: string;
+  salary_month: string;
+  policy_type: 'GIS' | 'SLI';
+}) => {
+  const query = `
+    INSERT INTO policy_cheque
+    (encashment_date, receipt_no, salary_month, policy_type)
+    VALUES (?, ?, ?, ?)
+  `;
+
+  const values = [
+    data.encashment_date,
+    data.receipt_no,
+    data.salary_month,
+    data.policy_type
+  ];
+
+  const [result]: any = await db.query(query, values);
+  return result;
+};
+
+
+export const attachChequeToRemittancesRepo = async (data: {
+  chequeId: number;
+  remittanceIds: number[];
+}) => {
+  if (!data.remittanceIds.length) return;
+
+  const placeholders = data.remittanceIds.map(() => "?").join(",");
+
+  const query = `
+    UPDATE policy_remittance
+    SET policy_cheque_id = ?
+    WHERE policy_remittance_id IN (${placeholders})
+  `;
+
+  const values = [data.chequeId, ...data.remittanceIds];
+
+  const [result]: any = await db.query(query, values);
+  return result;
+};
