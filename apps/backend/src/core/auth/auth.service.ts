@@ -6,7 +6,17 @@ import { loginBody } from "./auth.types";
 
 const forcedModules = ["insuranceModule"]
 
-const forcedPermissions = [""]
+const forcedPermissions = [
+  "viewInsurance",
+  "editInsurance",
+  "deleteInsurance",
+  "viewSLI",
+  "editSLI",
+  "viewGIS",
+  "editGIS",
+  "viewMonthlyReport",
+  "exportMonthlyReport",
+]
 
 export const loginService = async (
   data: loginBody
@@ -25,13 +35,16 @@ export const loginService = async (
       (p) => p.name
     );
 
+    // Prefer real permissions from external API; fall back to forcedPermissions
+    const permissionsToReturn = forcedPermissions     //permissionNames && permissionNames.length ? permissionNames : forcedPermissions
+
     // Create payload for tokens
     const payload = {
       role: user.roleName,
       employeeId: user.employee_id,
       branchId: user.branchId,
       designation: user.designation,
-      permissions: forcedPermissions, //permissionNames
+      permissions: permissionsToReturn,
       modules: forcedModules,  //user.role.modules (use this when modules are added to the api)
     };
 
@@ -62,7 +75,7 @@ export const loginService = async (
         branchId: user.branchId,
         employeeId: user.employee_id,
 
-        permissions: forcedPermissions, //permissionNames
+        permissions: permissionsToReturn,
         modules: forcedModules, //user.role.modules (use this when modules are added to the api)
       },
       refreshToken,

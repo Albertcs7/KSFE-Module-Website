@@ -6,7 +6,7 @@
  * It integrates the search bar, the action modals (Add, Remittance, Cheque),
  * and handles data display for a selected employee.
  */
-import { createPolicy, createRemittance, getPolicies, searchPolicies, updatePolicy,createCheque  } from '@/services/api/insurance.api'
+import { createCheque, createPolicy, createRemittance, getPolicies, searchPolicies, updatePolicy } from '@/services/api/insurance.api'
 import type { UpdatePolicyPayload } from '@/services/types/insurance.types'
 import { computed, onMounted, ref, watch } from 'vue'
 import SearchBar, { type SearchBarItem } from '../../../components/searchBar/SearchBar.vue'
@@ -93,6 +93,7 @@ const fetchPolicies = async (empCode?: string) => {
       dueMonth: r.dueMonth || r.due_month || '',
       amountDeducted: r.amountDeducted ?? r.amount_deducted ?? 0,
       chequeId: r.chequeId ?? r.policy_cheque_id ?? '',
+      receiptNoOrChequeNo: r.receiptNoOrChequeNo ?? r.receipt_no_or_cheque_no ?? r.receiptNo ?? '',
     }))
 
     if (!hasSearchTerm) {
@@ -428,6 +429,27 @@ const formatDateOnly = (dateString?: string): string => {
   // Extract only the date portion (YYYY-MM-DD) from ISO string
   return dateString.split('T')[0] || ''
 }
+
+// Try to display a human-friendly receipt / cheque number for a remittance.
+// We prefer an explicit receipt/cheque number from the remittance payload,
+// then fall back to the linked cheque record.
+const getChequeDisplay = (remit: any) => {
+  if (!remit) return '-'
+  const directNumber = remit.receiptNoOrChequeNo || remit.receipt_no_or_cheque_no || remit.receiptNo || ''
+  if (directNumber) return directNumber
+
+  const id = remit.chequeId || remit.policy_cheque_id || ''
+  if (!id) return '-'
+
+  const sliMatch = sliStore.cheques.find((c: any) => c.receiptNoOrChequeNo === id)
+  if (sliMatch) return sliMatch.receiptNoOrChequeNo
+
+  const gisMatch = gisStore.cheques.find((c: any) => c.receiptNoOrChequeNo === id)
+  if (gisMatch) return gisMatch.receiptNoOrChequeNo
+
+  // Fallback to the raw value (covers API-provided receipt numbers or numeric ids)
+  return id
+}
 </script>
 
 <template>
@@ -637,7 +659,7 @@ const formatDateOnly = (dateString?: string): string => {
                 <th>Salary Month</th>
                 <th>Due Month</th>
                 <th>Amount</th>
-                <th>Cheque ID</th>
+                <th>Receipt / Cheque No</th>
               </tr>
             </thead>
             <tbody>
@@ -653,7 +675,7 @@ const formatDateOnly = (dateString?: string): string => {
                 <td>{{ remit.salaryMonth }}</td>
                 <td>{{ remit.dueMonth }}</td>
                 <td>₹{{ remit.amountDeducted }}</td>
-                <td>{{ remit.chequeId || "-" }}</td>
+                <td>{{ getChequeDisplay(remit) }}</td>
               </tr>
               <tr v-if="displayedRemittances.length === 0">
                 <td colspan="6" class="empty-state">
