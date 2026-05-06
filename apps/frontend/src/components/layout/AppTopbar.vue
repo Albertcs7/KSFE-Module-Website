@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
 import { useAuthStore } from "@/store/auth.store";
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
 
 interface TopbarProps {
@@ -21,15 +22,44 @@ const emit = defineEmits<{
 
 const router = useRouter();
 const authStore = useAuthStore();
+const isLogoutDialogOpen = ref(false);
+const isLoggingOut = ref(false);
 
 const firstName = computed(() => {
   const fullName = authStore.user?.first_name?.trim() ?? "";
   return fullName ? fullName.split(" ")[0] ?? "User" : "User";
 });
 
-const handleLogout = async () => {
-  await authStore.logout();
-  router.push("/login");
+const openLogoutDialog = () => {
+  isLogoutDialogOpen.value = true;
+};
+
+const cancelLogout = () => {
+  if (isLoggingOut.value) {
+    return;
+  }
+
+  isLogoutDialogOpen.value = false;
+};
+
+const confirmLogout = async () => {
+  if (isLoggingOut.value) {
+    return;
+  }
+
+  isLoggingOut.value = true;
+
+  try {
+    await authStore.logout();
+    isLogoutDialogOpen.value = false;
+    router.push("/login");
+  } finally {
+    isLoggingOut.value = false;
+  }
+};
+
+const handleLogout = () => {
+  openLogoutDialog();
 };
 
 const roleLabel = computed(() => authStore.roleName || "Employee");
@@ -62,7 +92,16 @@ const initials = computed(() => firstName.value.charAt(0).toUpperCase());
         </span>
       </button>
       <button class="logout-btn" @click="handleLogout" title="Logout" aria-label="Logout">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg
+          viewBox="0 0 24 24"
+          width="18"
+          height="18"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
           <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
           <polyline points="16 17 21 12 16 7"></polyline>
           <line x1="21" y1="12" x2="9" y2="12"></line>
@@ -70,6 +109,17 @@ const initials = computed(() => firstName.value.charAt(0).toUpperCase());
       </button>
     </div>
   </header>
+
+  <ConfirmDialog
+    :is-open="isLogoutDialogOpen"
+    title="Log out"
+    message="Are you sure you want to log out?"
+    confirm-text="Log out"
+    cancel-text="Cancel"
+    :is-saving="isLoggingOut"
+    @confirm="confirmLogout"
+    @cancel="cancelLogout"
+  />
 </template>
 
 <style scoped>
@@ -203,8 +253,6 @@ const initials = computed(() => firstName.value.charAt(0).toUpperCase());
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(239, 68, 68, 0.1);
 }
-
-
 
 @media (max-width: 639px) {
   .topbar {

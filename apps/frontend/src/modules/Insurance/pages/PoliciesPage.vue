@@ -15,9 +15,9 @@ import { useToast } from '../../../composables/useToast'
 import { useGISStore } from '../store/useGISStore'
 import { useSLIStore } from '../store/useSLIStore'
 import type {
-    InsuranceChequeForm,
-    InsurancePolicyForm,
-    InsurancePolicyOption, InsuranceRemittanceForm
+  InsuranceChequeForm,
+  InsurancePolicyForm,
+  InsurancePolicyOption, InsuranceRemittanceForm
 } from '../types/insurance.types'
 
 // Import Modals for Actions
@@ -50,8 +50,10 @@ const allPolicies = ref<UserPolicy[]>([]) // ✅ Keep all policies for modals
 const searchRemittances = ref<any[]>([])
 const isLoadingUsers = ref(false)
 const loadError = ref('')
+let activeFetchRequestId = 0
 
 const fetchPolicies = async (empCode?: string) => {
+  const requestId = ++activeFetchRequestId
   isLoadingUsers.value = true
   loadError.value = ''
   try {
@@ -59,6 +61,10 @@ const fetchPolicies = async (empCode?: string) => {
     const res = hasSearchTerm ? await searchPolicies(empCode) : await getPolicies()
     const payload = res.data || {}
     const data = Array.isArray(payload) ? payload : payload.data || []
+
+    if (requestId !== activeFetchRequestId) {
+      return
+    }
 
     const transformedData = data.map((p: any) => ({
       id: p.id ?? p.employee_policy_id,
@@ -93,11 +99,17 @@ const fetchPolicies = async (empCode?: string) => {
       searchRemittances.value = []
     }
   } catch (err) {
+    if (requestId !== activeFetchRequestId) {
+      return
+    }
+
     console.error('Failed to fetch policies', err)
     loadError.value = 'Failed to load policies'
     searchRemittances.value = []
   } finally {
-    isLoadingUsers.value = false
+    if (requestId === activeFetchRequestId) {
+      isLoadingUsers.value = false
+    }
   }
 }
 
@@ -123,7 +135,7 @@ let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
 const searchItems = computed<SearchBarItem[]>(() => {
   const uniqueEmps = new Map()
-  policies.value.forEach(user => {
+  allPolicies.value.forEach(user => {
     const code = user.empCode.toUpperCase()
     if (!uniqueEmps.has(code)) {
       uniqueEmps.set(code, user)
@@ -137,9 +149,13 @@ const searchItems = computed<SearchBarItem[]>(() => {
   }))
 })
 
+    // if (hasSearchTerm) {
+    //   selectedEmpCode.value = String(empCode).trim()
+    // }
 const handleSearchSelect = (item: SearchBarItem) => {
   selectedEmpCode.value = item.label
 }
+      selectedEmpCode.value = null
 const handleSearchInput = (value: string) => {
   searchQuery.value = value
 }
@@ -155,6 +171,7 @@ watch(searchQuery, (val) => {
 
   debounceTimer = setTimeout(async () => {
     if (!val || val.trim().length < 2) {
+      selectedEmpCode.value = null
       await fetchPolicies() // reset to all
       return
     }

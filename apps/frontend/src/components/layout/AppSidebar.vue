@@ -76,7 +76,7 @@ const handleMenuClick = (): void => {
         </RouterLink>
       </div>
 
-      <p class="menu-title">Workspace</p>
+      <p class="menu-title">Modules</p>
 
       <nav class="menu-list" aria-label="Primary navigation">
         <div v-for="item in menuItems" :key="item.to" class="menu-item-wrapper">
@@ -133,9 +133,21 @@ const handleMenuClick = (): void => {
               class="menu-link"
               :class="{ 'active-parent': isActive(item.to) || expandedItems[item.label] }"
               @click="toggleExpand(item.label)"
-              style="justify-content: space-between; width: 100%; border: none; background: transparent; cursor: pointer; font-family: inherit; font-size: inherit; text-align: left;"
+              style="
+                justify-content: space-between;
+                width: 100%;
+                border: none;
+                background: transparent;
+                cursor: pointer;
+                font-family: inherit;
+                font-size: inherit;
+                text-align: left;
+              "
             >
-              <div class="menu-link-content" style="display: flex; align-items: center; gap: 0.9rem;">
+              <div
+                class="menu-link-content"
+                style="display: flex; align-items: center; gap: 0.9rem"
+              >
                 <span class="menu-icon" aria-hidden="true">
                   <svg v-if="item.icon === 'grid'" viewBox="0 0 24 24" fill="none">
                     <rect x="3" y="3" width="7" height="7" rx="2" />
@@ -173,8 +185,20 @@ const handleMenuClick = (): void => {
                 </span>
                 <span class="menu-label">{{ item.label }}</span>
               </div>
-              <span class="dropdown-chevron" :class="{ 'rotate-180': expandedItems[item.label] }">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <span
+                class="dropdown-chevron"
+                :class="{ 'rotate-180': expandedItems[item.label] }"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  width="16"
+                  height="16"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
                   <polyline points="6 9 12 15 18 9"></polyline>
                 </svg>
               </span>
@@ -194,8 +218,6 @@ const handleMenuClick = (): void => {
           </div>
         </div>
       </nav>
-
-
     </div>
   </aside>
 </template>
@@ -397,8 +419,6 @@ const handleMenuClick = (): void => {
 .sidebar.collapsed:not(.mobile) .menu-children {
   display: none;
 }
-
-
 
 @media (max-width: 959px) {
   .sidebar {
