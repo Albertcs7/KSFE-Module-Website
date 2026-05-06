@@ -1,6 +1,6 @@
 import { IncomingMessage, ServerResponse } from "http";
 import { parseBody } from "../../utils/parseBody";
-import { createPolicyService,createChequeAndAttachService , createRemittanceService, getAllPoliciesService, searchPoliciesService, updatePolicyService } from "./insurance.service";
+import { createChequeAndAttachService, createPolicyService, createRemittanceService, deletePolicyService, getAllPoliciesService, searchPoliciesService, updatePolicyService } from "./insurance.service";
 
 export const getAllPolicies = async (
   req: IncomingMessage,
@@ -179,6 +179,37 @@ export const updatePolicy = async (
     res.writeHead(400);
     res.end(JSON.stringify({ 
       message: error.message || "Failed to update policy" 
+    }));
+  }
+};
+
+export const deletePolicy = async (
+  req: IncomingMessage,
+  res: ServerResponse
+) => {
+  try {
+    const url = new URL(req.url || "", `http://${req.headers.host}`);
+    const pathParts = url.pathname.split("/");
+    const policyNo = pathParts[pathParts.length - 1];
+
+    if (!policyNo) {
+      res.writeHead(400);
+      res.end(JSON.stringify({ message: "Policy number is required" }));
+      return;
+    }
+
+    const result = await deletePolicyService(policyNo);
+
+    res.writeHead(200);
+    res.end(JSON.stringify({
+      message: "Policy deleted successfully",
+      data: result,
+    }));
+  } catch (error: any) {
+    console.error("Delete policy error:", error);
+    res.writeHead(400);
+    res.end(JSON.stringify({
+      message: error.message || "Failed to delete policy",
     }));
   }
 };

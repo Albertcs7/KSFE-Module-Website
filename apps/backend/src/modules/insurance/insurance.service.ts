@@ -1,5 +1,5 @@
 import { db } from "../../database/mysql";
-import { createPolicyRepo,createChequeRepo, createRemittanceRepo, getAllPoliciesRepo, getPolicyRemittancesRepo, searchPoliciesCountRepo, searchPoliciesRepo, updatePolicyRepo,attachChequeToRemittancesRepo } from "./insurance.repository";
+import { attachChequeToRemittancesRepo, createChequeRepo, createPolicyRepo, createRemittanceRepo, deletePolicyRemittancesRepo, deletePolicyRepo, getAllPoliciesRepo, getPolicyRemittancesRepo, searchPoliciesCountRepo, searchPoliciesRepo, updatePolicyRepo } from "./insurance.repository";
 
 type SearchPolicyRow = {
   employee_policy_id: number;
@@ -236,6 +236,52 @@ export const updatePolicyService = async (policyNo: string, data: any) => {
   } catch (err: any) {
     console.error(`❌ Error updating policy ${policyNo}:`, err.message);
     throw err;
+  }
+};
+
+export const deletePolicyService = async (policyNo: string) => {
+  if (!policyNo || policyNo.trim() === "") {
+    throw new Error("Policy number is required");
+  }
+
+  const connection = await db.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const [policyRows]: any = await connection.query(
+      `SELECT employee_policy_id FROM employee_policy WHERE policy_no = ?`,
+      [policyNo]
+    );
+
+    if (!policyRows || policyRows.length === 0) {
+      throw new Error(`Policy with number '${policyNo}' not found`);
+    }
+
+    const employeePolicyId = policyRows[0].employee_policy_id;
+
+    await connection.query(
+      `DELETE FROM policy_remittance WHERE employee_policy_id = ?`,
+      [employeePolicyId]
+    );
+
+    const [deleteResult]: any = await connection.query(
+      `DELETE FROM employee_policy WHERE policy_no = ?`,
+      [policyNo]
+    );
+
+    if (!deleteResult.affectedRows) {
+      throw new Error(`Policy with number '${policyNo}' not found`);
+    }
+
+    await connection.commit();
+
+    return deleteResult;
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
   }
 };
 

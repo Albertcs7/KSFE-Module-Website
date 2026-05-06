@@ -177,6 +177,26 @@ export const updatePolicyRepo = async (policyNo: string, data: any) => {
   return result;
 };
 
+export const deletePolicyRemittancesRepo = async (employeePolicyId: number) => {
+  const query = `
+    DELETE FROM policy_remittance
+    WHERE employee_policy_id = ?
+  `;
+
+  const [result]: any = await db.query(query, [employeePolicyId]);
+  return result;
+};
+
+export const deletePolicyRepo = async (policyNo: string) => {
+  const query = `
+    DELETE FROM employee_policy
+    WHERE policy_no = ?
+  `;
+
+  const [result]: any = await db.query(query, [policyNo]);
+  return result;
+};
+
 // ADD REMITTANCE
 
 export const createRemittanceRepo = async (data: {
