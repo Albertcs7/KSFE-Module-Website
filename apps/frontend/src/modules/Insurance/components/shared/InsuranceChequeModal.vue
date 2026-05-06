@@ -1,47 +1,48 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-import type { InsuranceChequeForm } from '../../types/insurance.types'
+import { ref, watch } from "vue";
+import type { InsuranceChequeForm } from "../../types/insurance.types";
 
-import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
+import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
 
 const props = defineProps<{
-  isOpen: boolean
-  isSaving: boolean
-  error: string | null
-}>()
+  isOpen: boolean;
+  isSaving: boolean;
+  error: string | null;
+}>();
 
 const emit = defineEmits<{
-  (e: 'close'): void
-  (e: 'submit', value: InsuranceChequeForm): void
-}>()
+  (e: "close"): void;
+  (e: "submit", value: InsuranceChequeForm): void;
+}>();
 
 const emptyForm = (): InsuranceChequeForm => ({
-  encashmentDate: '',
-  receiptNoOrChequeNo: '',
-  salaryMonth: '',
-})
+  encashmentDate: "",
+  receiptNoOrChequeNo: "",
+  salaryMonth: "",
+  policyType: "SLI", // default
+});
 
-const formData = ref<InsuranceChequeForm>(emptyForm())
-const showConfirm = ref(false)
+const formData = ref<InsuranceChequeForm>(emptyForm());
+const showConfirm = ref(false);
 
 watch(
   () => props.isOpen,
-  isOpen => {
+  (isOpen) => {
     if (isOpen) {
-      formData.value = emptyForm()
-      showConfirm.value = false
+      formData.value = emptyForm();
+      showConfirm.value = false;
     }
-  },
-)
+  }
+);
 
 const handleRequestSubmit = () => {
-  showConfirm.value = true
-}
+  showConfirm.value = true;
+};
 
 const handleConfirm = () => {
-  showConfirm.value = false
-  emit('submit', { ...formData.value })
-}
+  showConfirm.value = false;
+  emit("submit", { ...formData.value });
+};
 </script>
 
 <template>
@@ -49,7 +50,9 @@ const handleConfirm = () => {
     <div class="modal-content">
       <div class="modal-header">
         <h2>Add Cheque Details</h2>
-        <button class="close-btn" :disabled="isSaving" @click="emit('close')">&times;</button>
+        <button class="close-btn" :disabled="isSaving" @click="emit('close')">
+          &times;
+        </button>
       </div>
 
       <form @submit.prevent="handleRequestSubmit" class="modal-form">
@@ -57,21 +60,52 @@ const handleConfirm = () => {
 
         <div class="form-group">
           <label for="encashmentDate">Encashment Date</label>
-          <input id="encashmentDate" v-model="formData.encashmentDate" type="date" required />
+          <input
+            id="encashmentDate"
+            v-model="formData.encashmentDate"
+            type="date"
+            required
+          />
         </div>
 
         <div class="form-group">
           <label for="receiptNo">Receipt No / Cheque No</label>
-          <input id="receiptNo" v-model="formData.receiptNoOrChequeNo" type="text" placeholder="e.g. CHQ-998877" required />
+          <input
+            id="receiptNo"
+            v-model="formData.receiptNoOrChequeNo"
+            type="text"
+            placeholder="e.g. CHQ-998877"
+            required
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="policyType">Policy Type</label>
+          <select id="policyType" v-model="formData.policyType" required>
+            <option value="SLI">SLI</option>
+            <option value="GIS">GIS</option>
+          </select>
         </div>
 
         <div class="form-group">
           <label for="chequeSalaryMonth">Salary Month</label>
-          <input id="chequeSalaryMonth" v-model="formData.salaryMonth" type="month" required />
+          <input
+            id="chequeSalaryMonth"
+            v-model="formData.salaryMonth"
+            type="month"
+            required
+          />
         </div>
 
         <div class="modal-actions">
-          <button type="button" class="btn-cancel" :disabled="isSaving" @click="emit('close')">Cancel</button>
+          <button
+            type="button"
+            class="btn-cancel"
+            :disabled="isSaving"
+            @click="emit('close')"
+          >
+            Cancel
+          </button>
           <button type="submit" class="btn-primary" :disabled="isSaving">
             Save Cheque
           </button>
@@ -92,5 +126,5 @@ const handleConfirm = () => {
 </template>
 
 <style scoped>
-@import './modal-shared.css';
+@import "./modal-shared.css";
 </style>

@@ -6,7 +6,7 @@
  * It integrates the search bar, the action modals (Add, Remittance, Cheque),
  * and handles data display for a selected employee.
  */
-import { createPolicy, createRemittance, getPolicies, searchPolicies, updatePolicy } from '@/services/api/insurance.api'
+import { createPolicy, createRemittance, getPolicies, searchPolicies, updatePolicy,createCheque  } from '@/services/api/insurance.api'
 import type { UpdatePolicyPayload } from '@/services/types/insurance.types'
 import { computed, onMounted, ref, watch } from 'vue'
 import SearchBar, { type SearchBarItem } from '../../../components/searchBar/SearchBar.vue'
@@ -388,24 +388,38 @@ const handleAddRemittance = async (formData: InsuranceRemittanceForm) => {
 }
 
 const handleAddCheque = async (cheque: InsuranceChequeForm) => {
-  if (!cheque.encashmentDate || !cheque.receiptNoOrChequeNo) {
-    toast.error('Please fill in required fields.')
+  if (
+    !cheque.encashmentDate ||
+    !cheque.receiptNoOrChequeNo ||
+    !cheque.salaryMonth ||
+    !cheque.policyType
+  ) {
+    toast.error('Please fill in all required fields.')
     return
   }
 
   try {
-    // We add cheque to both or just SLI? In real usage it might be shared, let's just add to SLI store for now, or both.
-    await sliStore.addCheque({
+    await createCheque({
       encashmentDate: cheque.encashmentDate,
-      receiptNoOrChequeNo: cheque.receiptNoOrChequeNo,
+      receiptNo: cheque.receiptNoOrChequeNo,
       salaryMonth: cheque.salaryMonth,
+      policyType: cheque.policyType,
     })
-    // also GIS store if needed, but they are mocked mostly anyway.
 
     isChequeOpen.value = false
-    toast.success('Cheque Details added successfully!')
-  } catch {
-    toast.error('Unable to save cheque details. Please try again.')
+
+    toast.success('Cheque created and remittances linked successfully!')
+
+    // 🔥 IMPORTANT: Refresh data
+    await fetchPolicies(selectedEmpCode.value || undefined)
+
+  } catch (err: any) {
+    console.error(err)
+    const msg =
+      err?.response?.data?.message ||
+      'Unable to create cheque. Please try again.'
+
+    toast.error(msg)
   }
 }
 

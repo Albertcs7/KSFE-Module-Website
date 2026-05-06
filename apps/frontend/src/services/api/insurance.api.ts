@@ -79,3 +79,16 @@ export const createRemittance = (data: {
 }) => {
   return api.post("/insurance/remittance", data);
 };
+
+/**
+ * CREATE cheque
+ * Creates cheque and auto-attaches matching remittances
+ */
+export const createCheque = (data: {
+  encashmentDate: string
+  receiptNo: string
+  salaryMonth: string
+  policyType: 'GIS' | 'SLI'
+}) => {
+  return api.post("/insurance/cheque", data);
+};

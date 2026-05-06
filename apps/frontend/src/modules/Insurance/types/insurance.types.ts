@@ -24,6 +24,7 @@ export interface InsuranceChequeForm {
   encashmentDate: string
   receiptNoOrChequeNo: string
   salaryMonth: string
+  policyType: 'GIS' | 'SLI'   // 🔥 ADD THIS
 }
 
 export interface CreateRemittancePayload {
