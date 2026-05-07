@@ -16,10 +16,12 @@ export interface SearchBarItem {
 interface SearchBarProps {
   items: SearchBarItem[];
   placeholder?: string;
+  modelValue?: string;
 }
 
 const props = withDefaults(defineProps<SearchBarProps>(), {
   placeholder: "Search ...",
+  modelValue: "",
 });
 
 const emit = defineEmits<{
@@ -31,6 +33,15 @@ const isOpen = ref(false);
 const rootRef = ref<HTMLElement | null>(null);
 
 const normalizedQuery = computed(() => query.value.trim().toLowerCase());
+
+watch(
+  () => props.modelValue,
+  (value) => {
+    if (value !== query.value) {
+      query.value = value;
+    }
+  }
+);
 
 const filteredItems = computed(() => {
   // Show nothing until at least 2 characters are typed

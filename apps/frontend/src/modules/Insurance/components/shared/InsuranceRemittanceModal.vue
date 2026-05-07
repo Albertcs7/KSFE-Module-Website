@@ -70,6 +70,7 @@ watch(
     if (!props.isOpen) return;
 
     formData.value.policyNumber = "";
+    formData.value.amountDeducted = 0;
 
     if (debounceTimer) {
       clearTimeout(debounceTimer);
@@ -84,6 +85,51 @@ watch(
         formData.value.policyNumber = availablePolicies.value[0]?.policyNumber ?? "";
       }
     }, 0);
+  }
+);
+
+// Auto-fill amount deducted when both empCode and policyNumber are set
+watch(
+  () => [formData.value.empCode, formData.value.policyNumber],
+  ([empCode, policyNumber]) => {
+    if (!empCode || !policyNumber) {
+      return;
+    }
+
+    const matchingPolicy = availablePolicies.value.find(
+      (policy) => policy.policyNumber === policyNumber
+    );
+
+    if (matchingPolicy) {
+      formData.value.amountDeducted = matchingPolicy.premium;
+    }
+  }
+);
+
+// Auto-fill due month as next month when salary month is selected
+watch(
+  () => formData.value.salaryMonth,
+  (salaryMonth) => {
+    if (!salaryMonth) {
+      formData.value.dueMonth = "";
+      return;
+    }
+
+    // Parse the month string (format: YYYY-MM)
+    const parts = salaryMonth.split("-");
+    const year = parts[0] || new Date().getFullYear().toString();
+    const month = parts[1] || "01";
+
+    let nextMonth = parseInt(month) + 1;
+    let nextYear = parseInt(year);
+
+    if (nextMonth > 12) {
+      nextMonth = 1;
+      nextYear += 1;
+    }
+
+    // Format back to YYYY-MM
+    formData.value.dueMonth = `${nextYear}-${String(nextMonth).padStart(2, "0")}`;
   }
 );
 
@@ -192,6 +238,7 @@ const handleConfirm = () => {
         <div class="form-group">
           <label for="dueMonth">Due Month</label>
           <input id="dueMonth" v-model="formData.dueMonth" type="month" required />
+          <small v-if="formData.dueMonth" class="text-success"> </small>
         </div>
 
         <div class="form-group">
@@ -203,6 +250,7 @@ const handleConfirm = () => {
             placeholder="0.00"
             required
           />
+          <small v-if="formData.amountDeducted > 0" class="text-success"> </small>
         </div>
 
         <div class="form-group">

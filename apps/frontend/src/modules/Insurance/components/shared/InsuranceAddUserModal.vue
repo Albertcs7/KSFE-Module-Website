@@ -50,12 +50,12 @@ watch(
       try {
         const res = await searchPolicies(newCode);
         const data = res.data?.data || res.data || [];
-        
+
         // Find exact match
         const match = data.find(
           (p: any) => String(p.employee_code || p.empCode) === newCode
         );
-        
+
         if (match) {
           const fetchedName = match.employee_name || match.empName || "";
           if (fetchedName) {
@@ -74,7 +74,7 @@ const handleRequestSubmit = () => {
   if (!formData.value.policyNumber) return;
   if (!formData.value.premium || formData.value.premium <= 0) return;
   if (!formData.value.policyType) return;
-  
+
   showConfirm.value = true;
 };
 
@@ -156,7 +156,6 @@ const handleConfirm = () => {
             id="addUserDateOfMaturity"
             v-model="formData.dateOfMaturity"
             type="date"
-            required
           />
         </div>
 

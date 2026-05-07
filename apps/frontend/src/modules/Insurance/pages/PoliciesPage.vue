@@ -9,6 +9,7 @@
 import { createCheque, createPolicy, createRemittance, deletePolicy, getPolicies, searchPolicies, updatePolicy } from '@/services/api/insurance.api'
 import type { UpdatePolicyPayload } from '@/services/types/insurance.types'
 import { computed, onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import SearchBar, { type SearchBarItem } from '../../../components/searchBar/SearchBar.vue'
 import BaseButton from '../../../components/ui/BaseButton.vue'
 import { useToast } from '../../../composables/useToast'
@@ -32,6 +33,7 @@ import InsuranceRemittanceModal from '../components/shared/InsuranceRemittanceMo
 const sliStore = useSLIStore()
 const gisStore = useGISStore()
 const toast = useToast()
+const router = useRouter()
 
 // Unified User type
 interface UserPolicy {
@@ -162,14 +164,24 @@ const loadEmployeeDetails = async (empCode: string) => {
 const handleSearchSelect = async (item: SearchBarItem) => {
   await loadEmployeeDetails(item.label)
 }
-      selectedEmpCode.value = null
+selectedEmpCode.value = null
 const handleSearchInput = (value: string) => {
   searchQuery.value = value
 }
 
 const clearSelection = async () => {
   selectedEmpCode.value = null
+  searchQuery.value = ''
   await fetchPolicies()
+}
+
+const handleBackClick = async () => {
+  if (selectedEmpCode.value) {
+    await clearSelection()
+    return
+  }
+
+  router.back()
 }
 
 watch(searchQuery, (val) => {
@@ -465,7 +477,25 @@ const getChequeDisplay = (remit: any) => {
   <section class="policies-page">
     <header class="policies-header">
       <div class="search-section">
+        <BaseButton variant="secondary" @click="handleBackClick">
+          <template #icon>
+            <svg
+              viewBox="0 0 24 24"
+              width="16"
+              height="16"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M15 18l-6-6 6-6"></path>
+            </svg>
+          </template>
+        </BaseButton>
+
         <SearchBar
+          :modelValue="searchQuery"
           :items="searchItems"
           placeholder="Search by Employee Code (e.g. 3571)..."
           @select="handleSearchSelect"
