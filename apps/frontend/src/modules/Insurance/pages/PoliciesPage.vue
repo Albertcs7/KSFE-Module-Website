@@ -317,9 +317,10 @@ import ConfirmDialog from '../../../components/ui/ConfirmDialog.vue'
 const handleDeletePolicy = async () => {
   if (!policyToDelete.value) return
   isDeleting.value = true
+  const focusEmpCode = selectedEmpCode.value || policyToDelete.value.empCode
   try {
     await deletePolicy(policyToDelete.value.policyNumber)
-    await fetchPolicies()
+    await refreshPoliciesAfterMutation(focusEmpCode)
     isDeleteConfirmOpen.value = false
     toast.success('Policy deleted successfully!')
   } catch (err) {

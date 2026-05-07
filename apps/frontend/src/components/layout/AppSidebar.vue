@@ -342,7 +342,7 @@ const handleMenuClick = (): void => {
 
 .menu-label {
   font-weight: 600;
-  font-size: 1.02rem;
+  font-size: 1.1rem;
   white-space: nowrap;
 }
 
@@ -386,7 +386,7 @@ const handleMenuClick = (): void => {
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
-  padding-left: 3.2rem;
+  padding-left: 0.5rem;
   margin-top: 0.2rem;
   margin-bottom: 0.4rem;
 }
@@ -399,7 +399,7 @@ const handleMenuClick = (): void => {
   border-radius: 0.5rem;
   color: rgba(239, 246, 255, 0.7);
   text-decoration: none;
-  font-size: 0.95rem;
+  font-size: 1.05rem;
   font-weight: 500;
   transition: all 0.2s ease;
 }
