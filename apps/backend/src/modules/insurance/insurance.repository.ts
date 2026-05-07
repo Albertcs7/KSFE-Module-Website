@@ -19,6 +19,7 @@ type SearchRemittanceRow = {
   due_month: string;
   amount_deducted: number;
   policy_cheque_id: number | null;
+  receipt_no?: string | null;
   employee_code: number | string;
   employee_name: string;
   policy_no: string;
@@ -85,6 +86,7 @@ export const getPolicyRemittancesRepo = async (policyIds: number[]) => {
       DATE_FORMAT(pr_ranked.due_month, '%Y-%m') AS due_month,
       pr_ranked.amount_deducted,
       pr_ranked.policy_cheque_id,
+      pc.receipt_no,
       ep.employee_code,
       ep.employee_name,
       ep.policy_no,
@@ -97,6 +99,7 @@ export const getPolicyRemittancesRepo = async (policyIds: number[]) => {
       WHERE pr.employee_policy_id IN (${placeholders})
     ) pr_ranked
     INNER JOIN employee_policy ep ON ep.employee_policy_id = pr_ranked.employee_policy_id
+    LEFT JOIN policy_cheque pc ON pc.policy_cheque_id = pr_ranked.policy_cheque_id
     WHERE pr_ranked.rn <= 10
     ORDER BY pr_ranked.salary_month DESC, pr_ranked.due_month DESC, pr_ranked.policy_remittance_id DESC
   `;

@@ -93,7 +93,7 @@ const fetchPolicies = async (empCode?: string) => {
       dueMonth: r.dueMonth || r.due_month || '',
       amountDeducted: r.amountDeducted ?? r.amount_deducted ?? 0,
       chequeId: r.chequeId ?? r.policy_cheque_id ?? '',
-      receiptNoOrChequeNo: r.receiptNoOrChequeNo ?? r.receipt_no_or_cheque_no ?? r.receiptNo ?? '',
+      receiptNoOrChequeNo: r.receiptNoOrChequeNo ?? r.receipt_no_or_cheque_no ?? r.receipt_no ?? r.receiptNo ?? '',
     }))
 
     if (!hasSearchTerm) {
@@ -444,7 +444,7 @@ const formatDateOnly = (dateString?: string): string => {
 // then fall back to the linked cheque record.
 const getChequeDisplay = (remit: any) => {
   if (!remit) return '-'
-  const directNumber = remit.receiptNoOrChequeNo || remit.receipt_no_or_cheque_no || remit.receiptNo || ''
+  const directNumber = remit.receiptNoOrChequeNo || remit.receipt_no_or_cheque_no || remit.receipt_no || remit.receiptNo || ''
   if (directNumber) return directNumber
 
   const id = remit.chequeId || remit.policy_cheque_id || ''

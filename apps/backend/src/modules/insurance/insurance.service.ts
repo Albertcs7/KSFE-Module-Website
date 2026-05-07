@@ -19,6 +19,7 @@ type SearchRemittanceRow = {
   due_month: string;
   amount_deducted: number;
   policy_cheque_id: number | null;
+  receipt_no?: string | null;
   employee_code: number | string;
   employee_name: string;
   policy_no: string;
@@ -79,6 +80,7 @@ export const searchPoliciesService = async (params: {
     dueMonth: remittance.due_month,
     amountDeducted: remittance.amount_deducted,
     chequeId: remittance.policy_cheque_id ? String(remittance.policy_cheque_id) : "",
+    receiptNoOrChequeNo: remittance.receipt_no || "",
   }));
 
   return { 
