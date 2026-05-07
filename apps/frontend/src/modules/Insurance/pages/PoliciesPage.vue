@@ -6,7 +6,7 @@
  * It integrates the search bar, the action modals (Add, Remittance, Cheque),
  * and handles data display for a selected employee.
  */
-import { createCheque, createPolicy, createRemittance, getPolicies, searchPolicies, updatePolicy } from '@/services/api/insurance.api'
+import { createCheque, createPolicy, createRemittance, deletePolicy, getPolicies, searchPolicies, updatePolicy } from '@/services/api/insurance.api'
 import type { UpdatePolicyPayload } from '@/services/types/insurance.types'
 import { computed, onMounted, ref, watch } from 'vue'
 import SearchBar, { type SearchBarItem } from '../../../components/searchBar/SearchBar.vue'
@@ -300,7 +300,6 @@ const confirmDeletePolicy = (policy: UserPolicy) => {
   isDeleteConfirmOpen.value = true
 }
 
-import { deletePolicy } from '@/services/api/insurance.api'
 import ConfirmDialog from '../../../components/ui/ConfirmDialog.vue'
 
 const handleDeletePolicy = async () => {
@@ -320,6 +319,15 @@ const handleDeletePolicy = async () => {
   }
 }
 
+const refreshPoliciesAfterMutation = async (focusEmpCode?: string | null) => {
+  await fetchPolicies()
+
+  const normalizedEmpCode = focusEmpCode?.trim()
+  if (normalizedEmpCode) {
+    await fetchPolicies(normalizedEmpCode)
+  }
+}
+
 const handleAddUser = async (user: InsurancePolicyForm) => {
   try {
     const payload = {
@@ -332,7 +340,7 @@ const handleAddUser = async (user: InsurancePolicyForm) => {
     }
 
     await createPolicy(payload as any)
-    await fetchPolicies()
+    await refreshPoliciesAfterMutation(selectedEmpCode.value)
 
     isAddPolicyOpen.value = false
     toast.success('Policy added successfully!')
@@ -356,7 +364,7 @@ const handleUpdateUser = async (user: InsurancePolicyForm) => {
     await updatePolicy(user.policyNumber, payload)
 
     // Refresh policies list and close modal
-    await fetchPolicies()
+    await refreshPoliciesAfterMutation(selectedEmpCode.value)
     isEditUserOpen.value = false
     toast.success('Policy details updated successfully!')
   } catch (err: any) {
@@ -379,6 +387,7 @@ const handleAddRemittance = async (formData: InsuranceRemittanceForm) => {
       chequeId: formData.chequeId,
     })
 
+    await refreshPoliciesAfterMutation(selectedEmpCode.value || formData.empCode)
     isRemittanceOpen.value = false
     toast.success('Remittance added successfully!')
 
@@ -412,7 +421,7 @@ const handleAddCheque = async (cheque: InsuranceChequeForm) => {
     toast.success('Cheque created and remittances linked successfully!')
 
     // 🔥 IMPORTANT: Refresh data
-    await fetchPolicies(selectedEmpCode.value || undefined)
+    await refreshPoliciesAfterMutation(selectedEmpCode.value)
 
   } catch (err: any) {
     console.error(err)
