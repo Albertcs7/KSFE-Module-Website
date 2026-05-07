@@ -355,6 +355,7 @@ const handleMenuClick = (): void => {
 }
 
 .sidebar.collapsed:not(.mobile) .brand-copy,
+.sidebar.collapsed:not(.mobile) .menu-title,
 .sidebar.collapsed:not(.mobile) .menu-label {
   opacity: 0;
   pointer-events: none;
