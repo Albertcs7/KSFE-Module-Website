@@ -55,7 +55,3 @@ temp/
 # Cache
 
 .cache/
-
-#api intergration
-
-apps/backend/src/integrations/external-auth/*client.ts

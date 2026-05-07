@@ -53,3 +53,4 @@ export const ACCESS_TOKEN_EXPIRES_IN = process.env.ACCESS_TOKEN_EXPIRES_IN || "1
 export const REFRESH_TOKEN_EXPIRES_IN = process.env.REFRESH_TOKEN_EXPIRES_IN || "7d";
 export const REFRESH_COOKIE_NAME = process.env.REFRESH_COOKIE_NAME || "refreshToken";
 export const NODE_ENV = process.env.NODE_ENV || "development";
+export const EXTERNAL_AUTH_API_URL = process.env.EXTERNAL_AUTH_API_URL || "https://stagemobileapi.ksfeonline.com";
