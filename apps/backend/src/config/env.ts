@@ -52,5 +52,18 @@ export const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET || JWT_SECR
 export const ACCESS_TOKEN_EXPIRES_IN = process.env.ACCESS_TOKEN_EXPIRES_IN || "15m";
 export const REFRESH_TOKEN_EXPIRES_IN = process.env.REFRESH_TOKEN_EXPIRES_IN || "7d";
 export const REFRESH_COOKIE_NAME = process.env.REFRESH_COOKIE_NAME || "refreshToken";
+export const CSRF_COOKIE_NAME = process.env.CSRF_COOKIE_NAME || "XSRF-TOKEN";
+export const CSRF_HEADER_NAME = process.env.CSRF_HEADER_NAME || "x-csrf-token";
+export const JWT_ISSUER = process.env.JWT_ISSUER || "ksfe-backend";
+export const JWT_AUDIENCE = process.env.JWT_AUDIENCE || "ksfe-frontend";
 export const NODE_ENV = process.env.NODE_ENV || "development";
 export const EXTERNAL_AUTH_API_URL = process.env.EXTERNAL_AUTH_API_URL || "https://stagemobileapi.ksfeonline.com";
+
+// DB envs - fail fast when missing in non-test environments
+export const DB_HOST = requiredEnv("DB_HOST");
+export const DB_USER = requiredEnv("DB_USER");
+export const DB_PASSWORD = requiredEnv("DB_PASSWORD");
+export const DB_NAME = requiredEnv("DB_NAME");
+
+export const RATE_LIMIT_REQUESTS = Number(process.env.RATE_LIMIT_REQUESTS || "60");
+export const RATE_LIMIT_WINDOW_MS = Number(process.env.RATE_LIMIT_WINDOW_MS || "60000");

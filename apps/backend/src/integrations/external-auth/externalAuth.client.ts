@@ -1,6 +1,7 @@
 import axios, { AxiosError } from "axios";
-import { LoginApiResponse } from "./externalAuth.types";
 import { EXTERNAL_AUTH_API_URL } from "../../config/env";
+import { logger } from "../../core/logger/logger";
+import { LoginApiResponse } from "./externalAuth.types";
 
 const apiClient = axios.create({
   baseURL: EXTERNAL_AUTH_API_URL,
@@ -16,28 +17,25 @@ export const externalAuthClient = async (
   payload: unknown
 ): Promise<LoginApiResponse> => {
   try {
-    console.log("➡️ PAYLOAD:", payload);
+    logger.info("Calling external auth API", { endpoint });
 
-    const response = await apiClient.post<LoginApiResponse>(
-      endpoint,
-      payload
-    );
+    const response = await apiClient.post<LoginApiResponse>(endpoint, payload);
 
-    console.log("✅ RESPONSE got");
+    logger.info("External auth response received", { endpoint, status: response.status });
 
     return response.data;
   } catch (error) {
     const err = error as AxiosError;
 
-    console.log("❌ ERROR FULL:", err);
+    logger.error("External auth client error", { endpoint, message: err.message });
 
     if (err.response) {
-      console.log("❌ API RESPONSE:", err.response.data);
+      logger.warn("External auth API returned error", { status: err.response.status });
       throw new Error("External API Error");
     }
 
     if (err.request) {
-      console.log("❌ NO RESPONSE DETAILS:", err.request);
+      logger.warn("No response from auth server", { endpoint });
       throw new Error("No response from auth server");
     }
 

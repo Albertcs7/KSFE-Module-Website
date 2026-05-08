@@ -1,5 +1,6 @@
+import { logger } from "../../core/logger/logger";
 import { db } from "../../database/mysql";
-import { attachChequeToRemittancesRepo, createChequeRepo, createPolicyRepo, createRemittanceRepo, getAllPoliciesRepo, getPolicyRemittancesRepo, searchPoliciesCountRepo, searchPoliciesRepo, updatePolicyRepo } from "./insurance.repository";
+import { createPolicyRepo, getAllPoliciesRepo, getPolicyRemittancesRepo, searchPoliciesCountRepo, searchPoliciesRepo, updatePolicyRepo } from "./insurance.repository";
 
 type SearchPolicyRow = {
   employee_policy_id: number;
@@ -143,49 +144,58 @@ export const createRemittanceService = async (data: {
   }
 
   try {
-    // Convert empCode to number since employee_code is likely stored as integer
-    const empCodeNum = parseInt(empCode, 10);
-    
-    console.log("🔍 Looking up policy:", { empCodeNum, policyNumber });
-    
-    if (isNaN(empCodeNum)) {
-      throw new Error("Invalid employee code format");
-    }
+    // Use a dedicated connection and transaction to avoid race conditions
+    const conn = await db.getConnection();
+    try {
+      await conn.beginTransaction();
 
-    // Look up employee_policy_id using empCode and policyNumber
-    const [rows]: any = await db.query(
-      `SELECT employee_policy_id FROM employee_policy WHERE employee_code = ? AND policy_no = ?`,
-      [empCodeNum, policyNumber]
-    );
-
-    console.log("📋 Query result:", rows);
-
-    if (!rows || rows.length === 0) {
-      throw new Error(`Policy not found for employee ${empCode} with policy number ${policyNumber}`);
-    }
-
-    const employee_policy_id = rows[0].employee_policy_id;
-
-    // Convert `YYYY-MM` (from <input type="month">) to `YYYY-MM-01` for MySQL DATE columns
-    const toSqlDate = (ym: string) => {
-      if (!/^\d{4}-\d{2}$/.test(ym)) {
-        throw new Error("Invalid month format, expected YYYY-MM");
+      // Convert empCode to number
+      const empCodeNum = parseInt(empCode, 10);
+      logger.info("Looking up policy (for update)", { empCodeNum, policyNumberMasked: String(policyNumber).slice(-6) });
+      if (isNaN(empCodeNum)) {
+        throw new Error("Invalid employee code format");
       }
-      return `${ym}-01`;
-    };
 
-    const salaryMonthDate = toSqlDate(salaryMonth);
-    const dueMonthDate = toSqlDate(dueMonth);
+      // Lock the employee_policy row to serialize remittance inserts for this policy
+      const [rows]: any = await conn.query(
+        `SELECT employee_policy_id FROM employee_policy WHERE employee_code = ? AND policy_no = ? FOR UPDATE`,
+        [empCodeNum, policyNumber]
+      );
 
-    const result = await createRemittanceRepo({
-      employee_policy_id,
-      salary_month: salaryMonthDate,
-      due_month: dueMonthDate,
-      amount_deducted: amountDeducted,
-      policy_cheque_id: chequeId ? Number(chequeId) : undefined
-    });
+      if (!rows || rows.length === 0) {
+        throw new Error(`Policy not found for employee ${empCode} with policy number ${policyNumber}`);
+      }
 
-    return result;
+      const employee_policy_id = rows[0].employee_policy_id;
+
+      // Convert `YYYY-MM` (from <input type="month">) to `YYYY-MM-01` for MySQL DATE columns
+      const toSqlDate = (ym: string) => {
+        if (!/^\d{4}-\d{2}$/.test(ym)) {
+          throw new Error("Invalid month format, expected YYYY-MM");
+        }
+        return `${ym}-01`;
+      };
+
+      const salaryMonthDate = toSqlDate(salaryMonth);
+      const dueMonthDate = toSqlDate(dueMonth);
+
+      const [result]: any = await conn.query(
+        `
+          INSERT INTO policy_remittance
+          (employee_policy_id, salary_month, due_month, amount_deducted, policy_cheque_id)
+          VALUES (?, ?, ?, ?, ?)
+        `,
+        [employee_policy_id, salaryMonthDate, dueMonthDate, amountDeducted, chequeId ? Number(chequeId) : null]
+      );
+
+      await conn.commit();
+      return result;
+    } catch (e) {
+      await conn.rollback();
+      throw e;
+    } finally {
+      conn.release();
+    }
 
   } catch (err: any) {
 
@@ -228,15 +238,14 @@ export const updatePolicyService = async (policyNo: string, data: any) => {
       throw new Error(`Policy with number '${policyNo}' not found`);
     }
     
-    console.log(`✅ Policy ${policyNo} updated successfully:`, {
+    logger.info(`Policy ${policyNo} updated`, {
       affectedRows: result.affectedRows,
-      employee_name: data.employee_name,
       premium: data.premium
     });
     
     return result;
   } catch (err: any) {
-    console.error(`❌ Error updating policy ${policyNo}:`, err.message);
+    logger.error(`Error updating policy ${policyNo}`, { message: err.message });
     throw err;
   }
 };
@@ -316,45 +325,58 @@ export const createChequeAndAttachService = async (data: {
   const salaryMonthDate = toSqlDate(salaryMonth);
 
   try {
-    // ✅ Step 1: Create cheque
-    const chequeResult: any = await createChequeRepo({
-      encashment_date: encashmentDate,
-      receipt_no: receiptNo,
-      salary_month: salaryMonthDate,
-      policy_type: policyType
-    });
+    // Use a transaction to create cheque and attach atomically
+    const conn = await db.getConnection();
+    try {
+      await conn.beginTransaction();
 
-    const chequeId = chequeResult.insertId;
+      const [chequeResult]: any = await conn.query(
+        `
+          INSERT INTO policy_cheque
+          (encashment_date, receipt_no, salary_month, policy_type)
+          VALUES (?, ?, ?, ?)
+        `,
+        [encashmentDate, receiptNo, salaryMonthDate, policyType]
+      );
 
-    // ✅ Step 2: Find matching remittances
-    const [remittances]: any = await db.query(
-      `
-      SELECT pr.policy_remittance_id
-      FROM policy_remittance pr
-      INNER JOIN employee_policy ep 
-        ON ep.employee_policy_id = pr.employee_policy_id
-      WHERE pr.salary_month = ?
-        AND ep.policy_type = ?
-        AND pr.policy_cheque_id IS NULL
-      `,
-      [salaryMonthDate, policyType]
-    );
+      const chequeId = chequeResult.insertId;
 
-    const remittanceIds = remittances.map((r: any) => r.policy_remittance_id);
+      // Lock matching remittances to avoid concurrent attachments
+      const [remittances]: any = await conn.query(
+        `
+        SELECT pr.policy_remittance_id
+        FROM policy_remittance pr
+        INNER JOIN employee_policy ep 
+          ON ep.employee_policy_id = pr.employee_policy_id
+        WHERE pr.salary_month = ?
+          AND ep.policy_type = ?
+          AND pr.policy_cheque_id IS NULL
+        FOR UPDATE
+        `,
+        [salaryMonthDate, policyType]
+      );
 
-    // ✅ Step 3: Attach (only if exists)
-    if (remittanceIds.length > 0) {
-      await attachChequeToRemittancesRepo({
+      const remittanceIds = remittances.map((r: any) => r.policy_remittance_id);
+
+      if (remittanceIds.length > 0) {
+        const placeholders = remittanceIds.map(() => '?').join(',');
+        const updateSql = `UPDATE policy_remittance SET policy_cheque_id = ? WHERE policy_remittance_id IN (${placeholders})`;
+        await conn.query(updateSql, [chequeId, ...remittanceIds]);
+      }
+
+      await conn.commit();
+
+      return {
+        message: "Cheque created successfully",
         chequeId,
-        remittanceIds
-      });
+        attachedRemittances: remittanceIds.length
+      };
+    } catch (e) {
+      await conn.rollback();
+      throw e;
+    } finally {
+      conn.release();
     }
-
-    return {
-      message: "Cheque created successfully",
-      chequeId,
-      attachedRemittances: remittanceIds.length
-    };
 
   } catch (err: any) {
 

@@ -1,4 +1,6 @@
 import http from "http";
+import { rateLimit } from "./core/http/rateLimiter";
+import { logger } from "./core/logger/logger";
 import { router } from "./routes";
 
 const allowedOrigins = [
@@ -11,6 +13,7 @@ export const createApp = () => {
 
     // ✅ 1. Handle CORS FIRST
     const origin = req.headers.origin;
+    res.setHeader("Vary", "Origin");
 
     if (allowedOrigins.includes(origin || "")) {
       res.setHeader("Access-Control-Allow-Origin", origin as string);
@@ -21,6 +24,9 @@ export const createApp = () => {
     // Allow cookies/credentials for refresh token cookie
     res.setHeader("Access-Control-Allow-Credentials", "true");
 
+    // ✅ Rate limiting (in-memory for Phase 1)
+    if (!rateLimit(req, res)) return;
+
     // ✅ 2. Handle preflight (VERY IMPORTANT)
     if (req.method === "OPTIONS") {
       res.writeHead(204, { "Access-Control-Allow-Credentials": "true" });
@@ -29,11 +35,17 @@ export const createApp = () => {
     }
 
     // ✅ 3. Router safety (THIS is where your code goes)
-    const handled = await router(req, res);
+    try {
+      const handled = await router(req, res);
 
-    if (!handled) {
-      res.writeHead(404);
-      res.end(JSON.stringify({ message: "Route not found" }));
+      if (!handled) {
+        res.writeHead(404);
+        res.end(JSON.stringify({ message: "Route not found" }));
+      }
+    } catch (err: any) {
+      logger.error("Unhandled route error", { message: err.message });
+      res.writeHead(500);
+      res.end(JSON.stringify({ message: "Internal Server Error" }));
     }
   });
 

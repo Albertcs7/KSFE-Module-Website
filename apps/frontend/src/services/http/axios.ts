@@ -1,5 +1,17 @@
 import axios from "axios";
 
+const getCookie = (name: string) => {
+  if (typeof document === "undefined") return "";
+
+  const match = document.cookie
+    .split("; ")
+    .find((cookie) => cookie.startsWith(`${name}=`));
+
+  if (!match) return "";
+
+  return decodeURIComponent(match.split("=").slice(1).join("="));
+};
+
 const baseURL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 const axiosInstance = axios.create({
@@ -17,6 +29,17 @@ export const refreshClient = axios.create({
   timeout: 15000,
   withCredentials: true,
   headers: { "Content-Type": "application/json" },
+});
+
+refreshClient.interceptors.request.use((config) => {
+  const csrfToken = getCookie("XSRF-TOKEN");
+
+  if (csrfToken) {
+    config.headers = config.headers ?? {};
+    config.headers["x-csrf-token"] = csrfToken;
+  }
+
+  return config;
 });
 
 // REQUEST INTERCEPTOR

@@ -1,7 +1,6 @@
-import jwt from "jsonwebtoken";
-import { ACCESS_TOKEN_EXPIRES_IN, JWT_SECRET, REFRESH_TOKEN_EXPIRES_IN, REFRESH_TOKEN_SECRET } from "../../config/env";
 import { externalAuthLogin } from "../../integrations/external-auth/externalAuth.service";
 import { LoginApiResponse } from "../../integrations/external-auth/externalAuth.types";
+import { createAccessToken, createRefreshSession } from "./auth.session";
 import { loginBody } from "./auth.types";
 
 const forcedModules = ["insuranceModule"]
@@ -30,13 +29,17 @@ export const loginService = async (
 
     const user = response.data;
 
-    // Extract permission names
-    const permissionNames = user.role.permissions.map(
-      (p) => p.name
-    );
-
-    // Prefer real permissions from external API; fall back to forcedPermissions
-    const permissionsToReturn = forcedPermissions     //permissionNames && permissionNames.length ? permissionNames : forcedPermissions
+    // Temporary hardcoded access control.
+    // When the external auth API starts returning real permissions/modules,
+    // replace this with:
+    // const permissionsToReturn = Array.isArray(user.role?.permissions)
+    //   ? user.role.permissions.map((p) => p.name).filter(Boolean)
+    //   : [];
+    // const modulesToReturn = Array.isArray(user.role?.modules)
+    //   ? user.role.modules.filter(Boolean)
+    //   : [];
+    const permissionsToReturn = forcedPermissions;
+    const modulesToReturn = forcedModules;
 
     // Create payload for tokens
     const payload = {
@@ -45,18 +48,11 @@ export const loginService = async (
       branchId: user.branchId,
       designation: user.designation,
       permissions: permissionsToReturn,
-      modules: forcedModules,  //user.role.modules (use this when modules are added to the api)
+      modules: modulesToReturn,
     };
 
-    // Create access token (short lived)
-    const accessToken = jwt.sign(payload, JWT_SECRET, {
-      expiresIn: ACCESS_TOKEN_EXPIRES_IN as any,
-    });
-
-    // Create refresh token (long lived) - signed with different secret
-    const refreshToken = jwt.sign(payload, REFRESH_TOKEN_SECRET, {
-      expiresIn: REFRESH_TOKEN_EXPIRES_IN as any,
-    });
+    const accessToken = createAccessToken(payload).token;
+    const refreshSession = createRefreshSession(payload);
 
     //  Send everything frontend needs. Return refreshToken separately
     return {
@@ -76,9 +72,10 @@ export const loginService = async (
         employeeId: user.employee_id,
 
         permissions: permissionsToReturn,
-        modules: forcedModules, //user.role.modules (use this when modules are added to the api)
+        modules: modulesToReturn,
       },
-      refreshToken,
+      refreshToken: refreshSession.refreshToken,
+      csrfToken: refreshSession.csrfToken,
     };
   } catch (error: any) {
     throw new Error(error.message || "Auth service failed");

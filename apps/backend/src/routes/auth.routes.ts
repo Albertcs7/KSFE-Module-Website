@@ -1,14 +1,10 @@
 import { IncomingMessage, ServerResponse } from "http";
 import { loginController, logoutController, refreshController } from "../core/auth/auth.contoller";
-import { authenticate, type AuthenticatedRequest } from "../core/auth/auth.middleware";
-import { runMiddlewares } from "../core/http/middlewareRunner";
 
 export const authRoutes = async (
   req: IncomingMessage,
   res: ServerResponse
 ): Promise<boolean> => {
-  const guardedReq = req as AuthenticatedRequest;
-
   // POST LOGIN (Public - no token required)
   if (req.method === "POST" && req.url?.startsWith("/auth/login")) {
     await loginController(req, res);
@@ -23,7 +19,6 @@ export const authRoutes = async (
 
   // POST LOGOUT (Protected - requires Authorization: Bearer <token>)
   if (req.method === "POST" && req.url?.startsWith("/auth/logout")) {
-    if (!runMiddlewares(guardedReq, res, [authenticate])) return true;
     await logoutController(req, res);
     return true;
   }

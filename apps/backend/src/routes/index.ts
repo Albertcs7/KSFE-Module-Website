@@ -1,6 +1,8 @@
 import { IncomingMessage, ServerResponse } from "http";
-import { authRoutes } from "./auth.routes";
+import { logger } from "../core/logger/logger";
+import { db } from "../database/mysql";
 import { insuranceRoutes } from "../modules/insurance/insurance.routes";
+import { authRoutes } from "./auth.routes";
 // later: import { insuranceRoutes } ...
 
 export const router = async (
@@ -27,6 +29,27 @@ export const router = async (
   if (url === "/" && method === "GET") {
     res.writeHead(200);
     res.end(JSON.stringify({ message: "KSFE API Running 🚀" }));
+    return true;
+  }
+
+  // Health endpoint
+  if (url === "/health" && method === "GET") {
+    try {
+      // quick DB ping
+      db.getConnection().then((conn: { ping: () => Promise<any>; release: () => void; }) => {
+        conn.ping().catch(() => {});
+        conn.release();
+      }).catch((err: { message: any; }) => {
+        logger.warn("DB ping failed", { message: err.message });
+      });
+
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ status: "ok" }));
+    } catch (err: any) {
+      res.writeHead(500, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ status: "error", message: err.message }));
+    }
+
     return true;
   }
 

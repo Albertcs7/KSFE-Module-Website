@@ -1,4 +1,5 @@
 import { IncomingMessage, ServerResponse } from "http";
+import { logger } from "../../core/logger/logger";
 import { parseBody } from "../../utils/parseBody";
 import { createChequeAndAttachService, createPolicyService, createRemittanceService, deletePolicyService, getAllPoliciesService, searchPoliciesService, updatePolicyService } from "./insurance.service";
 
@@ -11,8 +12,8 @@ export const getAllPolicies = async (
 
     res.writeHead(200);
     res.end(JSON.stringify(data));
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
+    logger.error("getAllPolicies error", { message: error.message });
 
     res.writeHead(500);
     res.end(JSON.stringify({ message: "Internal Server Error" }));
@@ -90,14 +91,8 @@ export const createRemittance = async (
       amountDeducted,
       chequeId
     } = body;
-    console.log("📨 Remittance Request Body:", { 
-      empCode, 
-      policyNumber, 
-      salaryMonth, 
-      dueMonth, 
-      amountDeducted, 
-      chequeId 
-    });
+
+    logger.info("Remittance request received", { hasChequeId: !!chequeId, salaryMonth, dueMonth });
     // 🔒 Basic validation
     if (
       !empCode ||
@@ -128,7 +123,7 @@ export const createRemittance = async (
     }));
 
   } catch (error: any) {
-    console.error(error);
+    logger.error("createRemittance error", { message: error.message });
 
     res.writeHead(400);
     res.end(JSON.stringify({ message: error.message }));
@@ -175,7 +170,7 @@ export const updatePolicy = async (
     }));
 
   } catch (error: any) {
-    console.error('Update policy error:', error);
+    logger.error('Update policy error', { message: error.message });
     res.writeHead(400);
     res.end(JSON.stringify({ 
       message: error.message || "Failed to update policy" 
@@ -206,7 +201,7 @@ export const deletePolicy = async (
       data: result,
     }));
   } catch (error: any) {
-    console.error("Delete policy error:", error);
+    logger.error("Delete policy error", { message: error.message });
     res.writeHead(400);
     res.end(JSON.stringify({
       message: error.message || "Failed to delete policy",
@@ -250,7 +245,7 @@ export const createCheque = async (
     res.end(JSON.stringify(result));
 
   } catch (error: any) {
-    console.error("Cheque creation error:", error);
+    logger.error("Cheque creation error", { message: error.message });
 
     res.writeHead(400);
     res.end(JSON.stringify({

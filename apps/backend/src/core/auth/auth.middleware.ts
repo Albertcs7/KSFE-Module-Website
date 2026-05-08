@@ -1,9 +1,10 @@
 import { IncomingMessage, ServerResponse } from "http";
 import jwt from "jsonwebtoken";
-import { JWT_SECRET } from "../../config/env";
+import { JWT_AUDIENCE, JWT_ISSUER, JWT_SECRET } from "../../config/env";
+import type { AuthTokenClaims } from "./auth.session";
 
 export interface AuthenticatedRequest extends IncomingMessage {
-  user?: any;
+  user?: AuthTokenClaims & jwt.JwtPayload;
 }
 
 // Authentication
@@ -22,7 +23,11 @@ export const authenticate = (
 
     const token = authHeader.split(" ")[1];
 
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, JWT_SECRET, {
+      algorithms: ["HS256"],
+      issuer: JWT_ISSUER,
+      audience: JWT_AUDIENCE,
+    }) as AuthTokenClaims & jwt.JwtPayload;
 
     req.user = decoded;
 
@@ -43,7 +48,7 @@ export const authorize = (requiredPermission: string) => {
       return false;
     }
 
-    const userPermissions = req.user.permissions || [];
+    const userPermissions = Array.isArray(req.user.permissions) ? req.user.permissions : [];
 
     if (!userPermissions.includes(requiredPermission)) {
       res.statusCode = 403;
