@@ -28,7 +28,7 @@ export const router = async (
   // Root route
   if (url === "/" && method === "GET") {
     res.writeHead(200);
-    res.end(JSON.stringify({ message: "KSFE API Running 🚀" }));
+    res.end(JSON.stringify({ message: "KSFE API Running" }));
     return true;
   }
 

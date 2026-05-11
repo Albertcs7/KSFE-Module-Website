@@ -5,7 +5,8 @@ import { router } from "./routes";
 
 const allowedOrigins = [
   "http://localhost:5173",
-  "https://yourfrontend.com"
+  "https://yourfrontend.com",
+  "http://localhost:4173",
 ];
 
 export const createApp = () => {
