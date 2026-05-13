@@ -5,6 +5,8 @@ import { logger } from "./core/logger/logger";
 import { db } from "./database/mysql";
 dotenv.config();
 
+logger.debug("Loading backend server bootstrap");
+
 const server = createApp();
 
 // TEST DB connection

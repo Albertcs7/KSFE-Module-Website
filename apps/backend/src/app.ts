@@ -1,5 +1,6 @@
 import http from "http";
 import { rateLimit } from "./core/http/rateLimiter";
+import { attachRequestLogger } from "./core/http/requestLogger";
 import { logger } from "./core/logger/logger";
 import { router } from "./routes";
 
@@ -11,6 +12,7 @@ const allowedOrigins = [
 
 export const createApp = () => {
   const server = http.createServer(async (req, res) => {
+    attachRequestLogger(req, res);
 
     // ✅ 1. Handle CORS FIRST
     const origin = req.headers.origin;
@@ -49,6 +51,8 @@ export const createApp = () => {
       res.end(JSON.stringify({ message: "Internal Server Error" }));
     }
   });
+
+  logger.debug("HTTP application created");
 
   return server;
 };
