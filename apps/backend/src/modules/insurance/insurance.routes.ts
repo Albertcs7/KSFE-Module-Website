@@ -1,7 +1,7 @@
 import { IncomingMessage, ServerResponse } from "http";
 import { authenticate, authorize, type AuthenticatedRequest } from "../../core/auth/auth.middleware";
 import { runMiddlewares } from "../../core/http/middlewareRunner";
-import { createCheque, createPolicy, createRemittance, deletePolicy, getAllPolicies, getMonthlyReport, searchPolicies, updatePolicy } from "./insurance.controller";
+import { createCheque, createPolicy, createRemittance, deactivatePolicy, deletePolicy, getAllPolicies, getMonthlyReport, searchPolicies, updatePolicy } from "./insurance.controller";
 
 export const insuranceRoutes = async (
   req: IncomingMessage,
@@ -51,6 +51,13 @@ export const insuranceRoutes = async (
   if (req.method === "PUT" && req.url?.startsWith("/insurance/policies/")) {
     if (!requireAccess("editInsurance")) return true;
     await updatePolicy(req, res);
+    return true;
+  }
+
+  // PATCH DEACTIVATE POLICY
+  if (req.method === "PATCH" && req.url?.startsWith("/insurance/policies/") && req.url?.endsWith("/deactivate")) {
+    if (!requireAccess("editInsurance")) return true;
+    await deactivatePolicy(req, res);
     return true;
   }
 

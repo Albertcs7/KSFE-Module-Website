@@ -6,7 +6,7 @@
  * It integrates the search bar, the action modals (Add, Remittance, Cheque),
  * and handles data display for a selected employee.
  */
-import { createCheque, createPolicy, createRemittance, deletePolicy, getPolicies, searchPolicies, updatePolicy } from '@/services/api/insurance.api'
+import { createCheque, createPolicy, createRemittance, deactivatePolicy, deletePolicy, getPolicies, searchPolicies, updatePolicy } from '@/services/api/insurance.api'
 import type { UpdatePolicyPayload } from '@/services/types/insurance.types'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
@@ -16,9 +16,9 @@ import { useToast } from '../../../composables/useToast'
 import { useGISStore } from '../store/useGISStore'
 import { useSLIStore } from '../store/useSLIStore'
 import type {
-  InsuranceChequeForm,
-  InsurancePolicyForm,
-  InsurancePolicyOption, InsuranceRemittanceForm
+    InsuranceChequeForm,
+    InsurancePolicyForm,
+    InsurancePolicyOption, InsuranceRemittanceForm
 } from '../types/insurance.types'
 
 // Import Modals for Actions
@@ -44,6 +44,7 @@ interface UserPolicy {
   policyType: 'SLI' | 'GIS'
   premium: number
   dateOfMaturity: string
+  status: number
 }
 
 // --- BACKEND DATA STATE ---
@@ -76,6 +77,7 @@ const fetchPolicies = async (empCode?: string) => {
       policyType: p.policy_type || (p.sliPolicyNumber ? 'SLI' : 'GIS'),
       premium: p.premium || 0,
       dateOfMaturity: p.maturity_date || p.dateOfMaturity,
+      status: Number(p.status ?? 1),
     }))
 
     policies.value = transformedData
@@ -130,6 +132,7 @@ const userToEdit = ref<UserPolicy | null>(null)
 const policyToDelete = ref<UserPolicy | null>(null)
 const isDeleteConfirmOpen = ref(false)
 const isDeleting = ref(false)
+const isDeactivatingPolicyNo = ref<string | null>(null)
 
 // --- SEARCH &4 STATE ---
 const selectedEmpCode = ref<string | null>(null)
@@ -387,6 +390,25 @@ const handleUpdateUser = async (user: InsurancePolicyForm) => {
   }
 }
 
+const handleDeactivatePolicy = async (user: UserPolicy) => {
+  if (Number(user.status) === 0) {
+    return
+  }
+
+  isDeactivatingPolicyNo.value = user.policyNumber
+  try {
+    await deactivatePolicy(user.policyNumber)
+    await refreshPoliciesAfterMutation(selectedEmpCode.value || user.empCode)
+    toast.success('Policy deactivated successfully!')
+  } catch (err: any) {
+    console.error('Deactivate policy error:', err)
+    const errorMsg = err?.response?.data?.message || 'Unable to deactivate policy. Please try again.'
+    toast.error(errorMsg)
+  } finally {
+    isDeactivatingPolicyNo.value = null
+  }
+}
+
 const handleAddRemittance = async (formData: InsuranceRemittanceForm) => {
   try {
     // Send empCode and policyNumber to backend
@@ -605,7 +627,12 @@ const getChequeDisplay = (remit: any) => {
                 <td>₹{{ user.premium }}</td>
                 <td>{{ formatDateOnly(user.dateOfMaturity) }}</td>
                 <td class="actions-cell">
-                  <BaseButton variant="edit" @click="openEditModal(user)" title="Edit">
+                  <BaseButton
+                    variant="edit"
+                    :disabled="Number(user.status) === 0"
+                    @click="openEditModal(user)"
+                    :title="Number(user.status) === 0 ? 'Policy is deactivated' : 'Edit'"
+                  >
                     <template #icon>
                       <svg
                         viewBox="0 0 24 24"
@@ -626,6 +653,32 @@ const getChequeDisplay = (remit: any) => {
                       </svg>
                     </template>
                     Edit
+                  </BaseButton>
+                  <BaseButton
+                    variant="secondary"
+                    :disabled="Number(user.status) === 0 || isDeactivatingPolicyNo === user.policyNumber"
+                    :loading="isDeactivatingPolicyNo === user.policyNumber"
+                    loading-text="Deactivating..."
+                    @click="handleDeactivatePolicy(user)"
+                    :title="Number(user.status) === 0 ? 'Already deactivated' : 'Deactivate policy'"
+                    style="padding: 0.4rem 0.6rem; font-size: 0.8rem; border-radius: 6px"
+                  >
+                    <template #icon>
+                      <svg
+                        viewBox="0 0 24 24"
+                        width="14"
+                        height="14"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
+                        <path d="M18 6L6 18"></path>
+                        <path d="M6 6l12 12"></path>
+                      </svg>
+                    </template>
+                    {{ Number(user.status) === 0 ? 'Deactivated' : 'Deactivate' }}
                   </BaseButton>
                   <BaseButton
                     variant="print"

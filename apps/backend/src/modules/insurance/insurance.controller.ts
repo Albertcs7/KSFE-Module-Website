@@ -1,7 +1,7 @@
 import { IncomingMessage, ServerResponse } from "http";
 import { logger } from "../../core/logger/logger";
 import { parseBody } from "../../utils/parseBody";
-import { createChequeAndAttachService, createPolicyService, createRemittanceService, deletePolicyService, generateMonthlyExcelReport, getAllPoliciesService, searchPoliciesService, updatePolicyService } from "./insurance.service";
+import { createChequeAndAttachService, createPolicyService, createRemittanceService, deactivatePolicyService, deletePolicyService, generateMonthlyExcelReport, getAllPoliciesService, searchPoliciesService, updatePolicyService } from "./insurance.service";
 
 export const getAllPolicies = async (
   req: IncomingMessage,
@@ -205,6 +205,37 @@ export const deletePolicy = async (
     res.writeHead(400);
     res.end(JSON.stringify({
       message: error.message || "Failed to delete policy",
+    }));
+  }
+};
+
+export const deactivatePolicy = async (
+  req: IncomingMessage,
+  res: ServerResponse
+) => {
+  try {
+    const url = new URL(req.url || "", `http://${req.headers.host}`);
+    const pathParts = url.pathname.split("/");
+    const policyNo = pathParts[pathParts.length - 2];
+
+    if (!policyNo) {
+      res.writeHead(400);
+      res.end(JSON.stringify({ message: "Policy number is required" }));
+      return;
+    }
+
+    const result = await deactivatePolicyService(policyNo);
+
+    res.writeHead(200);
+    res.end(JSON.stringify({
+      message: "Policy deactivated successfully",
+      data: result,
+    }));
+  } catch (error: any) {
+    logger.error("Deactivate policy error", { message: error.message });
+    res.writeHead(400);
+    res.end(JSON.stringify({
+      message: error.message || "Failed to deactivate policy",
     }));
   }
 };

@@ -20,8 +20,8 @@ export const createApp = () => {
       res.setHeader("Access-Control-Allow-Origin", origin as string);
     }
 
-    res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, x-csrf-token");
     // Allow cookies/credentials for refresh token cookie
     res.setHeader("Access-Control-Allow-Credentials", "true");
 

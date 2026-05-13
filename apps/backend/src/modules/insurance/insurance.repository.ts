@@ -180,6 +180,29 @@ export const updatePolicyRepo = async (policyNo: string, data: any) => {
   return result;
 };
 
+export const getPolicyByNumberRepo = async (policyNo: string) => {
+  const query = `
+    SELECT employee_policy_id, policy_no, status
+    FROM employee_policy
+    WHERE policy_no = ?
+    LIMIT 1
+  `;
+
+  const [rows]: any = await db.query(query, [policyNo]);
+  return rows?.[0] || null;
+};
+
+export const deactivatePolicyRepo = async (policyNo: string) => {
+  const query = `
+    UPDATE employee_policy
+    SET status = 0
+    WHERE policy_no = ?
+  `;
+
+  const [result]: any = await db.query(query, [policyNo]);
+  return result;
+};
+
 export const deletePolicyRemittancesRepo = async (employeePolicyId: number) => {
   const query = `
     DELETE FROM policy_remittance

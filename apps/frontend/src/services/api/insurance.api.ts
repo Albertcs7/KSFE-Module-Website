@@ -68,6 +68,13 @@ export const updatePolicy = (policyNo: string, data: UpdatePolicyPayload) => {
 };
 
 /**
+ * DEACTIVATE policy (sets status to 0)
+ */
+export const deactivatePolicy = (policyNo: string) => {
+  return api.patch(`/insurance/policies/${policyNo}/deactivate`);
+};
+
+/**
  * CREATE remittance
  * Backend receives empCode and policyNumber, looks up employee_policy_id, and stores remittance
  */

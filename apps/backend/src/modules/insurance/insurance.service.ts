@@ -1,7 +1,7 @@
 import ExcelJS from "exceljs";
 import { logger } from "../../core/logger/logger";
 import { db } from "../../database/mysql";
-import { createPolicyRepo, getAllPoliciesRepo, getMonthlyReportDataRepo, getPolicyRemittancesRepo, searchPoliciesCountRepo, searchPoliciesRepo, updatePolicyRepo } from "./insurance.repository";
+import { createPolicyRepo, deactivatePolicyRepo, getAllPoliciesRepo, getMonthlyReportDataRepo, getPolicyByNumberRepo, getPolicyRemittancesRepo, searchPoliciesCountRepo, searchPoliciesRepo, updatePolicyRepo } from "./insurance.repository";
 import { ExcelBufferResult, GetMonthlyReportParams, MonthlyReportRow } from "./insurance.types";
 
 type SearchPolicyRow = {
@@ -12,6 +12,7 @@ type SearchPolicyRow = {
   policy_type: string;
   premium: number;
   maturity_date: string | null;
+  status?: number;
   [key: string]: any;
 };
 
@@ -216,6 +217,19 @@ export const createRemittanceService = async (data: {
 
 export const updatePolicyService = async (policyNo: string, data: any) => {
 
+  if (!policyNo || policyNo.trim() === "") {
+    throw new Error("Policy number is required");
+  }
+
+  const existingPolicy = await getPolicyByNumberRepo(policyNo);
+  if (!existingPolicy) {
+    throw new Error(`Policy with number '${policyNo}' not found`);
+  }
+
+  if (Number(existingPolicy.status) === 0) {
+    throw new Error("This policy is deactivated and cannot be edited");
+  }
+
   // ✅ Comprehensive validation
   if (!data.employee_name || data.employee_name.trim() === '') {
     throw new Error("Employee name is required and cannot be empty");
@@ -250,6 +264,29 @@ export const updatePolicyService = async (policyNo: string, data: any) => {
     logger.error(`Error updating policy ${policyNo}`, { message: err.message });
     throw err;
   }
+};
+
+export const deactivatePolicyService = async (policyNo: string) => {
+  if (!policyNo || policyNo.trim() === "") {
+    throw new Error("Policy number is required");
+  }
+
+  const existingPolicy = await getPolicyByNumberRepo(policyNo);
+  if (!existingPolicy) {
+    throw new Error(`Policy with number '${policyNo}' not found`);
+  }
+
+  if (Number(existingPolicy.status) === 0) {
+    return { message: "Policy already deactivated" };
+  }
+
+  const result = await deactivatePolicyRepo(policyNo);
+  if (!result?.affectedRows) {
+    throw new Error(`Policy with number '${policyNo}' not found`);
+  }
+
+  logger.info(`Policy ${policyNo} deactivated`, { affectedRows: result.affectedRows });
+  return result;
 };
 
 export const deletePolicyService = async (policyNo: string) => {
