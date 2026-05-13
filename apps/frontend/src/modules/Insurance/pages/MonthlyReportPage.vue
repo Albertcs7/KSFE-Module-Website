@@ -3,186 +3,102 @@
  * MonthlyReportPage.vue
  * ─────────────────────
  * Organisation-wide report download page.
- * Admin picks a salary month → downloads ALL employees' data for that month.
- * Separate download buttons for SLI and GIS.
+ * Downloads backend-generated Excel reports for GIS or SLI.
  */
 import { ref } from "vue";
 import { useToast } from "../../../composables/useToast";
-import { useGISStore } from "../store/useGISStore";
-import { useSLIStore } from "../store/useSLIStore";
+import { downloadMonthlyReport, type MonthlyReportType } from "../../../services/api/insurance.api";
 
-const sliStore = useSLIStore();
-const gisStore = useGISStore();
 const toast = useToast();
-
 const salaryMonth = ref("");
+const isDownloading = ref(false);
 
-/** Trigger a browser CSV download */
-const downloadCSV = (filename: string, rows: string[][]) => {
-  const content =
-    "data:text/csv;charset=utf-8," + rows.map((r) => r.join(",")).join("\n");
-  const a = document.createElement("a");
-  a.setAttribute("href", encodeURI(content));
-  a.setAttribute("download", filename);
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
+const monthNames: Record<string, string> = {
+  "01": "January",
+  "02": "February",
+  "03": "March",
+  "04": "April",
+  "05": "May",
+  "06": "June",
+  "07": "July",
+  "08": "August",
+  "09": "September",
+  "10": "October",
+  "11": "November",
+  "12": "December",
 };
 
-/** Download org-wide SLI report for the selected salary month */
-const downloadSLI = () => {
-  if (!salaryMonth.value) {
-    toast.error("Please select a salary month.");
-    return;
+const parseSelectedMonth = () => {
+  if (!salaryMonth.value || !/^\d{4}-\d{2}$/.test(salaryMonth.value)) {
+    throw new Error("Please select a valid salary month.");
   }
 
-  const rows: string[][] = [];
-  rows.push([`KSFE - SLI Organisation Report`]);
-  rows.push([`Salary Month`, salaryMonth.value]);
-  rows.push([`Generated On`, new Date().toLocaleDateString("en-IN")]);
-  rows.push([]);
+  const [year, month] = salaryMonth.value.split("-") as [string, string];
+  const monthName = monthNames[month as keyof typeof monthNames];
 
-  const empMap = new Map<string, typeof sliStore.users[0]>();
-  sliStore.users.forEach((u) => {
-    if (!empMap.has(u.empCode.toUpperCase())) empMap.set(u.empCode.toUpperCase(), u);
-  });
-
-  if (empMap.size === 0) {
-    toast.error("No SLI employee data found.");
-    return;
+  if (!monthName) {
+    throw new Error("Please select a valid salary month.");
   }
 
-  empMap.forEach((_, code) => {
-    const policies = new Map<string, typeof sliStore.users[0]>();
-    sliStore.users
-      .filter((u) => u.empCode.toUpperCase() === code)
-      .forEach((u) => policies.set(u.sliPolicyNumber.toUpperCase(), u));
-
-    const empInfo = sliStore.users.find((u) => u.empCode.toUpperCase() === code)!;
-    rows.push([`Employee Code`, empInfo.empCode, `Name`, empInfo.empName]);
-
-    policies.forEach((policy) => {
-      rows.push([
-        `  Policy`,
-        policy.sliPolicyNumber,
-        `Premium`,
-        `Rs.${policy.premium}`,
-        `Maturity`,
-        policy.dateOfMaturity,
-      ]);
-      rows.push([
-        `  Due Month`,
-        `Amount Deducted (Rs.)`,
-        `Salary Month`,
-        `Date of Encashment`,
-        `Receipt No / Cheque No`,
-      ]);
-
-      const remittances = sliStore.remittances.filter(
-        (r) =>
-          r.empCode.toUpperCase() === code &&
-          r.sliPolicyNumber === policy.sliPolicyNumber &&
-          r.salaryMonth === salaryMonth.value
-      );
-
-      if (remittances.length === 0) {
-        rows.push([`  No remittance records for this salary month.`]);
-      } else {
-        remittances.forEach((r) => {
-          const cheque = sliStore.cheques.find(
-            (c) => c.receiptNoOrChequeNo === r.chequeId
-          );
-          rows.push([
-            `  ${r.dueMonth}`,
-            r.amountDeducted.toString(),
-            r.salaryMonth,
-            cheque?.encashmentDate ?? "N/A",
-            cheque?.receiptNoOrChequeNo ?? "N/A",
-          ]);
-        });
-        const total = remittances.reduce((s, r) => s + r.amountDeducted, 0);
-        rows.push([`  SUBTOTAL`, `Rs.${total}`, "", "", ""]);
-      }
-    });
-    rows.push([]);
-  });
-
-  downloadCSV(`SLI_OrgReport_${salaryMonth.value}.csv`, rows);
-  toast.success(`SLI organisation report downloaded (${empMap.size} employees).`);
+  return { year, month, monthName };
 };
 
-/** Download org-wide GIS report for the selected salary month */
-const downloadGIS = () => {
-  if (!salaryMonth.value) {
-    toast.error("Please select a salary month.");
-    return;
+const buildFallbackFilename = (type: MonthlyReportType, monthName: string, year: string) => {
+  return `${type}-${monthName}-${year}.xlsx`;
+};
+
+const getFilenameFromResponse = (fallbackFilename: string, contentDisposition?: string) => {
+  if (!contentDisposition) return fallbackFilename;
+
+  const utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;\n]+)/i);
+  if (utf8Match?.[1]) {
+    return decodeURIComponent(utf8Match[1].trim().replace(/^"|"$/g, ""));
   }
 
-  const rows: string[][] = [];
-  rows.push([`KSFE - GIS Organisation Report`]);
-  rows.push([`Salary Month`, salaryMonth.value]);
-  rows.push([`Generated On`, new Date().toLocaleDateString("en-IN")]);
-  rows.push([]);
-
-  if (gisStore.users.length === 0) {
-    toast.error("No GIS employee data found.");
-    return;
+  const plainMatch = contentDisposition.match(/filename="?([^";]+)"?/i);
+  if (plainMatch?.[1]) {
+    return plainMatch[1].trim();
   }
 
-  const seen = new Set<string>();
-  gisStore.users.forEach((policy) => {
-    const code = policy.empCode.toUpperCase();
-    if (seen.has(code)) return;
-    seen.add(code);
+  return fallbackFilename;
+};
 
-    rows.push([`Employee Code`, policy.empCode, `Name`, policy.empName]);
-    rows.push([
-      `  Policy`,
-      policy.gisPolicyNumber,
-      `Premium`,
-      `Rs.${policy.premium}`,
-      `Maturity`,
-      policy.dateOfMaturity,
-    ]);
-    rows.push([
-      `  Due Month`,
-      `Amount Deducted (Rs.)`,
-      `Salary Month`,
-      `Date of Encashment`,
-      `Receipt No / Cheque No`,
-    ]);
+const triggerDownload = (blob: Blob, filename: string) => {
+  const url = window.URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
 
-    const remittances = gisStore.remittances.filter(
-      (r) => r.empCode.toUpperCase() === code && r.salaryMonth === salaryMonth.value
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+  window.URL.revokeObjectURL(url);
+};
+
+const downloadReport = async (type: MonthlyReportType) => {
+  try {
+    const { year, month, monthName } = parseSelectedMonth();
+    isDownloading.value = true;
+
+    const response = await downloadMonthlyReport({ type, month, year });
+    const fallbackFilename = buildFallbackFilename(type, monthName, year);
+    const filename = getFilenameFromResponse(
+      fallbackFilename,
+      String(response.headers["content-disposition"] ?? response.headers["Content-Disposition"] ?? "")
     );
 
-    if (remittances.length === 0) {
-      rows.push([`  No remittance records for this salary month.`]);
-    } else {
-      remittances.forEach((r) => {
-        const cheque = gisStore.cheques.find((c) => c.receiptNoOrChequeNo === r.chequeId);
-        rows.push([
-          `  ${r.dueMonth}`,
-          r.amountDeducted.toString(),
-          r.salaryMonth,
-          cheque?.encashmentDate ?? "N/A",
-          cheque?.receiptNoOrChequeNo ?? "N/A",
-        ]);
-      });
-      const total = remittances.reduce((s, r) => s + r.amountDeducted, 0);
-      rows.push([`  SUBTOTAL`, `Rs.${total}`, "", "", ""]);
-    }
-    rows.push([]);
-  });
-
-  downloadCSV(`GIS_OrgReport_${salaryMonth.value}.csv`, rows);
-  toast.success(`GIS organisation report downloaded (${seen.size} employees).`);
+    triggerDownload(response.data, filename);
+    toast.success(`${type} monthly report downloaded successfully.`);
+  } catch (error: any) {
+    toast.error(error?.response?.data?.message || error?.message || "Failed to download monthly report.");
+  } finally {
+    isDownloading.value = false;
+  }
 };
 </script>
 
 <template>
   <section class="report-page">
-    <!-- Page Header -->
     <div class="page-header">
       <div class="page-header__icon">
         <svg
@@ -202,14 +118,12 @@ const downloadGIS = () => {
       <div>
         <h1 class="page-title">Organisation Monthly Report</h1>
         <p class="page-subtitle">
-          Select a salary month to download SLI or GIS remittance data for all employees.
+          Select a salary month and download backend-generated Excel reports for SLI or GIS.
         </p>
       </div>
     </div>
 
-    <!-- Form Card -->
     <div class="report-card">
-      <!-- Month Selector -->
       <div class="form-section">
         <label class="section-label" for="salaryMonthPicker">Select Salary Month</label>
         <div class="input-wrapper">
@@ -236,11 +150,15 @@ const downloadGIS = () => {
         </div>
       </div>
 
-      <!-- Download Buttons -->
       <div class="form-section">
         <p class="section-label">Download Report</p>
         <div class="download-grid">
-          <button id="download-sli-btn" class="dl-btn sli" @click="downloadSLI">
+          <button
+            id="download-sli-btn"
+            class="dl-btn sli"
+            :disabled="isDownloading"
+            @click="downloadReport('SLI')"
+          >
             <svg
               viewBox="0 0 24 24"
               width="20"
@@ -256,10 +174,15 @@ const downloadGIS = () => {
               <line x1="12" y1="15" x2="12" y2="3" />
             </svg>
             <span class="dl-title">Download SLI Report</span>
-            <span class="dl-sub">All employees · All SLI policies</span>
+            <span class="dl-sub">Backend Excel export</span>
           </button>
 
-          <button id="download-gis-btn" class="dl-btn gis" @click="downloadGIS">
+          <button
+            id="download-gis-btn"
+            class="dl-btn gis"
+            :disabled="isDownloading"
+            @click="downloadReport('GIS')"
+          >
             <svg
               viewBox="0 0 24 24"
               width="20"
@@ -275,7 +198,7 @@ const downloadGIS = () => {
               <line x1="12" y1="15" x2="12" y2="3" />
             </svg>
             <span class="dl-title">Download GIS Report</span>
-            <span class="dl-sub">All employees · GIS policy per employee</span>
+            <span class="dl-sub">Backend Excel export</span>
           </button>
         </div>
       </div>
@@ -297,8 +220,6 @@ const downloadGIS = () => {
   display: flex;
   align-items: center;
   gap: 1.25rem;
-}
-.page-header {
   width: min(100%, 760px);
 }
 
@@ -409,6 +330,10 @@ const downloadGIS = () => {
   font-family: inherit;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
+.dl-btn:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
 .dl-btn svg {
   margin-bottom: 0.4rem;
   stroke: rgba(255, 255, 255, 0.9);
@@ -426,7 +351,7 @@ const downloadGIS = () => {
 .dl-btn.sli {
   background: linear-gradient(135deg, #1d3a6d, #2d5aa0);
 }
-.dl-btn.sli:hover {
+.dl-btn.sli:hover:not(:disabled) {
   background: linear-gradient(135deg, #152b52, #244a8a);
   transform: translateY(-2px);
 }
@@ -434,7 +359,7 @@ const downloadGIS = () => {
 .dl-btn.gis {
   background: linear-gradient(135deg, #5bb700, #4a9500);
 }
-.dl-btn.gis:hover {
+.dl-btn.gis:hover:not(:disabled) {
   background: linear-gradient(135deg, #4a9500, #3a7500);
   transform: translateY(-2px);
 }

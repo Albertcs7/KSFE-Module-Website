@@ -1,6 +1,8 @@
 import api from "../http/axios";
 import type { CreatePolicyPayload, UpdatePolicyPayload } from "../types/insurance.types";
 
+export type MonthlyReportType = "GIS" | "SLI";
+
 /**
  * GET  policies by employee code
  */
@@ -91,4 +93,18 @@ export const createCheque = (data: {
   policyType: 'GIS' | 'SLI'
 }) => {
   return api.post("/insurance/cheque", data);
+};
+
+/**
+ * Download the backend-generated monthly Excel report as a Blob.
+ */
+export const downloadMonthlyReport = (params: {
+  type: MonthlyReportType;
+  month: string;
+  year: string;
+}) => {
+  return api.get("/insurance/monthly-report", {
+    params,
+    responseType: "blob",
+  });
 };

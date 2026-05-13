@@ -276,3 +276,28 @@ export const attachChequeToRemittancesRepo = async (data: {
   const [result]: any = await db.query(query, values);
   return result;
 };
+
+/**
+ * Get monthly report rows for given policy type and month/year.
+ * Returns raw rows only.
+ */
+export const getMonthlyReportDataRepo = async (policyType: 'GIS' | 'SLI', month: number, year: number) => {
+  // Filter by MONTH() and YEAR() for the salary_month column
+  const query = `
+    SELECT
+      ep.employee_code,
+      ep.employee_name,
+      ep.policy_no,
+      pr.amount_deducted
+    FROM employee_policy ep
+    INNER JOIN policy_remittance pr
+      ON ep.employee_policy_id = pr.employee_policy_id
+    WHERE ep.policy_type = ?
+      AND MONTH(pr.salary_month) = ?
+      AND YEAR(pr.salary_month) = ?
+    ORDER BY ep.employee_name ASC, ep.employee_code ASC
+  `;
+
+  const [rows] = await db.query(query, [policyType, month, year]);
+  return rows;
+};

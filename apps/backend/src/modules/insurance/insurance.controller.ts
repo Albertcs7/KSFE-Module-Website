@@ -1,7 +1,7 @@
 import { IncomingMessage, ServerResponse } from "http";
 import { logger } from "../../core/logger/logger";
 import { parseBody } from "../../utils/parseBody";
-import { createChequeAndAttachService, createPolicyService, createRemittanceService, deletePolicyService, getAllPoliciesService, searchPoliciesService, updatePolicyService } from "./insurance.service";
+import { createChequeAndAttachService, createPolicyService, createRemittanceService, deletePolicyService, generateMonthlyExcelReport, getAllPoliciesService, searchPoliciesService, updatePolicyService } from "./insurance.service";
 
 export const getAllPolicies = async (
   req: IncomingMessage,
@@ -251,5 +251,47 @@ export const createCheque = async (
     res.end(JSON.stringify({
       message: error.message || "Failed to create cheque"
     }));
+  }
+};
+
+export const getMonthlyReport = async (req: IncomingMessage, res: ServerResponse) => {
+  try {
+    const url = new URL(req.url || "", `http://${req.headers.host}`);
+    const type = (url.searchParams.get("type") || "").toUpperCase();
+    const month = url.searchParams.get("month") || ""; // expected MM
+    const year = url.searchParams.get("year") || ""; // expected YYYY
+
+    // Basic validation
+    if (!type || !["GIS", "SLI"].includes(type)) {
+      res.writeHead(400);
+      res.end(JSON.stringify({ message: "Invalid or missing 'type' query parameter. Use 'GIS' or 'SLI'." }));
+      return;
+    }
+
+    if (!/^(0[1-9]|1[0-2])$/.test(month)) {
+      res.writeHead(400);
+      res.end(JSON.stringify({ message: "Invalid or missing 'month' query parameter. Use two-digit month like '03'." }));
+      return;
+    }
+
+    if (!/^\d{4}$/.test(year)) {
+      res.writeHead(400);
+      res.end(JSON.stringify({ message: "Invalid or missing 'year' query parameter. Use 'YYYY'." }));
+      return;
+    }
+
+    const { buffer, filename } = await generateMonthlyExcelReport({ policyType: type as 'GIS' | 'SLI', month, year });
+
+    res.writeHead(200, {
+      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Disposition': `attachment; filename="${filename}"`,
+      'Content-Length': buffer.length,
+    });
+
+    res.end(buffer);
+  } catch (error: any) {
+    logger.error('Monthly report generation error', { message: error.message });
+    res.writeHead(500);
+    res.end(JSON.stringify({ message: error.message || 'Failed to generate report' }));
   }
 };
