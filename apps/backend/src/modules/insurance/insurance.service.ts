@@ -613,8 +613,6 @@ export const generateMonthlyExcelReport = async (params: GetMonthlyReportParams)
   const colWidths = computeColumnWidths(tableHeaders, contentRows as any[]);
   ws.columns = colWidths;
 
-  // Footer formatting: freeze header row
-  ws.views = [{ state: 'frozen', ySplit: tableStartRow }];
 
   // Generate buffer
   const buffer = await workbook.xlsx.writeBuffer();
