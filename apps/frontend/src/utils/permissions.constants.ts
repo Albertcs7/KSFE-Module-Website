@@ -83,6 +83,7 @@ export const AVAILABLE_PERMISSIONS = {
   VIEW_INSURANCE: 'viewInsurance',
   EDIT_INSURANCE: 'editInsurance',
   DELETE_INSURANCE: 'deleteInsurance',
+  DEACTIVATE_INSURANCE: 'deactivateInsurance',
   VIEW_SLI: 'viewSLI',
   EDIT_SLI: 'editSLI',
   VIEW_GIS: 'viewGIS',

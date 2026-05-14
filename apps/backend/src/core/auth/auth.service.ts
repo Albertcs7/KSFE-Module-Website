@@ -9,6 +9,7 @@ const forcedPermissions = [
   "viewInsurance",
   "editInsurance",
   "deleteInsurance",
+  "deactivateInsurance",
   "viewSLI",
   "editSLI",
   "viewGIS",

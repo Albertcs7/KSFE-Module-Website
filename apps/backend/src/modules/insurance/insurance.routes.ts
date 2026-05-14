@@ -56,7 +56,7 @@ export const insuranceRoutes = async (
 
   // PATCH DEACTIVATE POLICY
   if (req.method === "PATCH" && req.url?.startsWith("/insurance/policies/") && req.url?.endsWith("/deactivate")) {
-    if (!requireAccess("editInsurance")) return true;
+    if (!requireAccess("deactivateInsurance")) return true;
     await deactivatePolicy(req, res);
     return true;
   }

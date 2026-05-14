@@ -12,13 +12,14 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import SearchBar, { type SearchBarItem } from '../../../components/searchBar/SearchBar.vue'
 import BaseButton from '../../../components/ui/BaseButton.vue'
+import { usePermissions } from '../../../composables/usePermissions'
 import { useToast } from '../../../composables/useToast'
 import { useGISStore } from '../store/useGISStore'
 import { useSLIStore } from '../store/useSLIStore'
 import type {
-    InsuranceChequeForm,
-    InsurancePolicyForm,
-    InsurancePolicyOption, InsuranceRemittanceForm
+  InsuranceChequeForm,
+  InsurancePolicyForm,
+  InsurancePolicyOption, InsuranceRemittanceForm
 } from '../types/insurance.types'
 
 // Import Modals for Actions
@@ -34,6 +35,7 @@ const sliStore = useSLIStore()
 const gisStore = useGISStore()
 const toast = useToast()
 const router = useRouter()
+const { hasPermission } = usePermissions()
 
 // Unified User type
 interface UserPolicy {
@@ -655,12 +657,20 @@ const getChequeDisplay = (remit: any) => {
                     Edit
                   </BaseButton>
                   <BaseButton
+                    v-if="hasPermission('deactivateInsurance')"
                     variant="secondary"
-                    :disabled="Number(user.status) === 0 || isDeactivatingPolicyNo === user.policyNumber"
+                    :disabled="
+                      Number(user.status) === 0 ||
+                      isDeactivatingPolicyNo === user.policyNumber
+                    "
                     :loading="isDeactivatingPolicyNo === user.policyNumber"
                     loading-text="Deactivating..."
                     @click="handleDeactivatePolicy(user)"
-                    :title="Number(user.status) === 0 ? 'Already deactivated' : 'Deactivate policy'"
+                    :title="
+                      Number(user.status) === 0
+                        ? 'Already deactivated'
+                        : 'Deactivate policy'
+                    "
                     style="padding: 0.4rem 0.6rem; font-size: 0.8rem; border-radius: 6px"
                   >
                     <template #icon>
@@ -678,7 +688,7 @@ const getChequeDisplay = (remit: any) => {
                         <path d="M6 6l12 12"></path>
                       </svg>
                     </template>
-                    {{ Number(user.status) === 0 ? 'Deactivated' : 'Deactivate' }}
+                    {{ Number(user.status) === 0 ? "Deactivated" : "Deactivate" }}
                   </BaseButton>
                   <BaseButton
                     variant="print"
