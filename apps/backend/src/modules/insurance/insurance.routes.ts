@@ -1,13 +1,14 @@
 import { IncomingMessage, ServerResponse } from "http";
 import { authenticate, authorize, type AuthenticatedRequest } from "../../core/auth/auth.middleware";
 import { runMiddlewares } from "../../core/http/middlewareRunner";
-import { createCheque, createPolicy, createRemittance, deactivatePolicy, deletePolicy, getAllPolicies, getMonthlyReport, searchPolicies, updatePolicy } from "./insurance.controller";
+import { createCheque, createPolicy, createRemittance, deactivatePolicy, deletePolicy, downloadPolicyReport, getAllPolicies, getMonthlyReport, getPolicyReport, searchPolicies, updatePolicy } from "./insurance.controller";
 
 export const insuranceRoutes = async (
   req: IncomingMessage,
   res: ServerResponse
 ): Promise<boolean> => {
   const guardedReq = req as AuthenticatedRequest;
+  const pathname = new URL(req.url || '', `http://${req.headers.host || 'localhost'}`).pathname;
 
   const requireAccess = (permission: string) =>
     runMiddlewares(guardedReq, res, [authenticate, authorize(permission)]);
@@ -16,6 +17,20 @@ export const insuranceRoutes = async (
   if (req.method === "GET" && req.url?.startsWith("/insurance/policies/search")) {
     if (!requireAccess("viewInsurance")) return true;
     await searchPolicies(req, res);
+    return true;
+  }
+
+  // GET SINGLE POLICY REPORT PREVIEW DATA
+  if (req.method === "GET" && pathname.match(/^\/insurance\/policies\/\d+\/report$/)) {
+    if (!requireAccess("viewInsurance")) return true;
+    await getPolicyReport(req, res);
+    return true;
+  }
+
+  // GET SINGLE POLICY REPORT PDF DOWNLOAD
+  if (req.method === "GET" && pathname.match(/^\/insurance\/policies\/\d+\/report\/download$/)) {
+    if (!requireAccess("exportPolicyReport")) return true;
+    await downloadPolicyReport(req, res);
     return true;
   }
 

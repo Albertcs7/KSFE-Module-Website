@@ -22,8 +22,6 @@ import type {
   InsurancePolicyOption, InsuranceRemittanceForm
 } from '../types/insurance.types'
 
-// Import Modals for Actions
-import ExportReportModal from '../components/ExportReportModal.vue'
 import InsuranceAddUserModal from '../components/shared/InsuranceAddUserModal.vue'
 import InsuranceChequeModal from '../components/shared/InsuranceChequeModal.vue'
 import InsurancePolicyModal from '../components/shared/InsurancePolicyModal.vue'
@@ -127,9 +125,6 @@ const isRemittanceOpen = ref(false)
 const isChequeOpen = ref(false)
 const isEditUserOpen = ref(false)
 const isAddPolicyOpen = ref(false)
-const isExportOpen = ref(false)
-
-const policyForExport = ref<UserPolicy | null>(null)
 const userToEdit = ref<UserPolicy | null>(null)
 const policyToDelete = ref<UserPolicy | null>(null)
 const isDeleteConfirmOpen = ref(false)
@@ -307,9 +302,8 @@ const openEditModal = (user: UserPolicy) => {
   isEditUserOpen.value = true
 }
 
-const openPrintModal = (policy: UserPolicy) => {
-  policyForExport.value = policy
-  isExportOpen.value = true
+const openPolicyReport = (policy: UserPolicy) => {
+  router.push(`/insurance/policies/${policy.id}/report`)
 }
 
 const confirmDeletePolicy = (policy: UserPolicy) => {
@@ -692,7 +686,7 @@ const getChequeDisplay = (remit: any) => {
                   </BaseButton>
                   <BaseButton
                     variant="print"
-                    @click="openPrintModal(user)"
+                    @click="openPolicyReport(user)"
                     title="Print / Export"
                   >
                     <template #icon>
@@ -903,18 +897,6 @@ const getChequeDisplay = (remit: any) => {
       :error="null"
       @close="isEditUserOpen = false"
       @submit="handleUpdateUser"
-    />
-    <ExportReportModal
-      v-if="policyForExport"
-      :is-open="isExportOpen"
-      :module-type="policyForExport.policyType"
-      :emp-code="policyForExport.empCode"
-      :emp-name="policyForExport.empName"
-      :policy-number="policyForExport.policyNumber"
-      @close="
-        isExportOpen = false;
-        policyForExport = null;
-      "
     />
     <ConfirmDialog
       :is-open="isDeleteConfirmOpen"

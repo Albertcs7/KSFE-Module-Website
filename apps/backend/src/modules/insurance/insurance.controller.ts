@@ -1,7 +1,7 @@
 import { IncomingMessage, ServerResponse } from "http";
 import { logger } from "../../core/logger/logger";
 import { parseBody } from "../../utils/parseBody";
-import { createChequeAndAttachService, createPolicyService, createRemittanceService, deactivatePolicyService, deletePolicyService, generateMonthlyExcelReport, getAllPoliciesService, searchPoliciesService, updatePolicyService } from "./insurance.service";
+import { createChequeAndAttachService, createPolicyService, createRemittanceService, deactivatePolicyService, deletePolicyService, generateMonthlyExcelReport, generatePolicyPdfReport, getAllPoliciesService, getPolicyReportService, searchPoliciesService, updatePolicyService } from "./insurance.service";
 
 export const getAllPolicies = async (
   req: IncomingMessage,
@@ -324,5 +324,59 @@ export const getMonthlyReport = async (req: IncomingMessage, res: ServerResponse
     logger.error('Monthly report generation error', { message: error.message });
     res.writeHead(500);
     res.end(JSON.stringify({ message: error.message || 'Failed to generate report' }));
+  }
+};
+
+export const getPolicyReport = async (req: IncomingMessage, res: ServerResponse) => {
+  try {
+    const url = new URL(req.url || '', `http://${req.headers.host}`);
+    const pathParts = url.pathname.split('/').filter(Boolean);
+    const policyId = Number(pathParts[pathParts.length - 2]);
+
+    if (!Number.isInteger(policyId) || policyId <= 0) {
+      res.writeHead(400);
+      res.end(JSON.stringify({ message: 'Invalid policy id' }));
+      return;
+    }
+
+    const result = await getPolicyReportService(policyId);
+
+    res.writeHead(200, {
+      'Content-Type': 'application/json',
+    });
+    res.end(JSON.stringify(result));
+  } catch (error: any) {
+    logger.error('Policy report fetch error', { message: error.message });
+    const statusCode = error.message?.includes('not found') ? 404 : 400;
+    res.writeHead(statusCode);
+    res.end(JSON.stringify({ message: error.message || 'Failed to fetch policy report' }));
+  }
+};
+
+export const downloadPolicyReport = async (req: IncomingMessage, res: ServerResponse) => {
+  try {
+    const url = new URL(req.url || '', `http://${req.headers.host}`);
+    const pathParts = url.pathname.split('/').filter(Boolean);
+    const policyId = Number(pathParts[pathParts.length - 3]);
+
+    if (!Number.isInteger(policyId) || policyId <= 0) {
+      res.writeHead(400);
+      res.end(JSON.stringify({ message: 'Invalid policy id' }));
+      return;
+    }
+
+    const { buffer, filename } = await generatePolicyPdfReport(policyId);
+
+    res.writeHead(200, {
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="${filename}"`,
+      'Content-Length': buffer.length,
+    });
+    res.end(buffer);
+  } catch (error: any) {
+    logger.error('Policy PDF generation error', { message: error.message });
+    const statusCode = error.message?.includes('not found') ? 404 : 500;
+    res.writeHead(statusCode);
+    res.end(JSON.stringify({ message: error.message || 'Failed to generate policy report PDF' }));
   }
 };

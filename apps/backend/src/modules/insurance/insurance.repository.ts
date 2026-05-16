@@ -324,3 +324,52 @@ export const getMonthlyReportDataRepo = async (policyType: 'GIS' | 'SLI', month:
   const [rows] = await db.query(query, [policyType, month, year]);
   return rows;
 };
+
+export const getPolicyReportDataRepo = async (policyId: number) => {
+  const [policyRows]: any = await db.query(
+    `
+      SELECT
+        employee_policy_id,
+        employee_code,
+        employee_name,
+        policy_no,
+        policy_type,
+        premium,
+        maturity_date,
+        status
+      FROM employee_policy
+      WHERE employee_policy_id = ?
+      LIMIT 1
+    `,
+    [policyId]
+  );
+
+  if (!policyRows || policyRows.length === 0) {
+    return { policy: null, remittances: [] };
+  }
+
+  const [remittanceRows]: any = await db.query(
+    `
+      SELECT
+        pr.policy_remittance_id,
+        pr.employee_policy_id,
+        DATE_FORMAT(pr.salary_month, '%Y-%m') AS salary_month,
+        DATE_FORMAT(pr.due_month, '%Y-%m') AS due_month,
+        pr.amount_deducted,
+        pr.policy_cheque_id,
+        DATE_FORMAT(pc.encashment_date, '%Y-%m-%d') AS encashment_date,
+        pc.receipt_no AS receipt_no
+      FROM policy_remittance pr
+      LEFT JOIN policy_cheque pc
+        ON pc.policy_cheque_id = pr.policy_cheque_id
+      WHERE pr.employee_policy_id = ?
+      ORDER BY pr.salary_month DESC, pr.due_month DESC, pr.policy_remittance_id DESC
+    `,
+    [policyId]
+  );
+
+  return {
+    policy: policyRows[0],
+    remittances: remittanceRows,
+  };
+};

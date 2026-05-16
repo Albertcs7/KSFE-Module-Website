@@ -1,8 +1,11 @@
 import ExcelJS from "exceljs";
+import fs from "fs";
+import path from "path";
+import puppeteer from "puppeteer";
 import { logger } from "../../core/logger/logger";
 import { db } from "../../database/mysql";
-import { createPolicyRepo, deactivatePolicyRepo, getAllPoliciesRepo, getMonthlyReportDataRepo, getPolicyByNumberRepo, getPolicyRemittancesRepo, searchPoliciesCountRepo, searchPoliciesRepo, updatePolicyRepo } from "./insurance.repository";
-import { ExcelBufferResult, GetMonthlyReportParams, MonthlyReportRow } from "./insurance.types";
+import { createPolicyRepo, deactivatePolicyRepo, getAllPoliciesRepo, getMonthlyReportDataRepo, getPolicyByNumberRepo, getPolicyRemittancesRepo, getPolicyReportDataRepo, searchPoliciesCountRepo, searchPoliciesRepo, updatePolicyRepo } from "./insurance.repository";
+import { ExcelBufferResult, GetMonthlyReportParams, MonthlyReportRow, PolicyReportData } from "./insurance.types";
 
 type SearchPolicyRow = {
   employee_policy_id: number;
@@ -29,6 +32,8 @@ type SearchRemittanceRow = {
   policy_no: string;
   policy_type: string;
 };
+
+type PolicyReportRenderData = PolicyReportData;
 
 /* 
   VIEWING THE EMPLOYEE POLICIES
@@ -332,6 +337,404 @@ export const deletePolicyService = async (policyNo: string) => {
     throw error;
   } finally {
     connection.release();
+  }
+};
+
+const formatDateLabel = (value?: string | null) => {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString('en-IN');
+};
+
+const formatMonthLabel = (value?: string | null) => {
+  if (!value) return '-';
+  const [year, month] = String(value).split('-');
+  if (!year || !month) return value;
+
+  const parsedYear = Number(year);
+  const parsedMonth = Number(month) - 1;
+  const date = new Date(parsedYear, parsedMonth, 1);
+  if (Number.isNaN(date.getTime())) return value;
+
+  return date.toLocaleString('en-IN', { month: 'short', year: 'numeric' });
+};
+
+const escapeHtml = (value: unknown) => {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+};
+
+const getPolicyTypeFullName = (policyType: string): string => {
+  const typeMap: Record<string, string> = {
+    'GIS': 'Group Insurance Scheme',
+    'SLI': 'State Life Insurance'
+  };
+  return typeMap[policyType] || policyType;
+};
+
+const getReportLetterheadDataUrl = () => {
+  const candidatePaths = [
+    path.resolve(process.cwd(), 'public/report-letterhead.png'),
+    path.resolve(process.cwd(), 'public/KSFE TOP LOGO.png'),
+    path.resolve(process.cwd(), 'public/ksfe main logo.png'),
+
+  ];
+
+  for (const candidatePath of candidatePaths) {
+    if (fs.existsSync(candidatePath)) {
+      const imageBuffer = fs.readFileSync(candidatePath);
+      return `data:image/png;base64,${imageBuffer.toString('base64')}`;
+    }
+  }
+
+  return '';
+};
+
+export const generatePolicyReportHtml = (reportData: PolicyReportRenderData) => {
+  const letterheadSrc = getReportLetterheadDataUrl();
+  const rowsHtml = reportData.remittances.length > 0
+    ? reportData.remittances.map((remittance) => `
+        <tr>
+          <td>${escapeHtml(formatMonthLabel(remittance.due_month))}</td>
+          <td class="right">₹${Number(remittance.amount_deducted || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+          <td>${escapeHtml(formatMonthLabel(remittance.salary_month))}</td>
+          <td>${escapeHtml(formatDateLabel(remittance.encashment_date))}</td>
+          <td>${escapeHtml(remittance.receipt_no || remittance.policy_cheque_id || '-')}</td>
+        </tr>
+      `).join('')
+    : `
+        <tr>
+          <td colspan="5" class="empty-state">No remittance records found for this policy.</td>
+        </tr>
+      `;
+
+  return `
+    <!doctype html>
+    <html lang="en">
+      <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Policy Report - ${escapeHtml(reportData.policy.policy_no)}</title>
+        <style>
+          @page {
+            size: A4;
+            margin: 20px;
+          }
+
+          * {
+            box-sizing: border-box;
+          }
+
+          body {
+            margin: 0;
+            font-family: Arial, Helvetica, sans-serif;
+            color: #111827;
+            background: #f3f4f6;
+          }
+
+          .page {
+            width: 210mm;
+            min-height: 297mm;
+            margin: 0 auto;
+            background: #fff;
+            padding: 16px 50px 20px;
+          }
+
+          .letterhead {
+            padding-bottom: 6px;
+            border-bottom: 1px solid #111827;
+            margin-bottom: 8px;
+          }
+
+          .letterhead img {
+            width: 70%;
+            height: 140px;
+            max-height: 190px;
+            display: block;
+            object-fit: fill;
+          }
+
+          .date-display {
+            font-size: 15px;
+            color: #111827;
+            margin-bottom: 8px;
+            text-align: right;
+          }
+
+          .title-block {
+            text-align: center;
+            margin-bottom: 16px;
+          }
+
+          .title-block h2 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 600;
+            text-decoration: underline;
+          }
+
+          .title-underline {
+            display: none;
+          }
+
+          .details-section {
+            margin-bottom: 14px;
+            font-size: 15px;
+            line-height: 1.8;
+          }
+
+          .detail-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 120px;
+            margin-bottom: 6px;
+          }
+
+          .detail-inline {
+            display: flex;
+            gap: 0;
+          }
+
+          .detail-inline:nth-child(1) {
+            margin-left: 12px;
+          }
+
+          .detail-inline:nth-child(2) {
+            margin-left: 24px;
+          }
+
+          .detail-label {
+            font-weight: 400;
+            color: #111827;
+          }
+
+          .detail-value {
+            color: #111827;
+          }
+
+          .section {
+            margin-top: 12px;
+          }
+
+          .report-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 15px;
+            table-layout: fixed;
+          }
+
+          .report-table th,
+          .report-table td {
+            border: 1px solid #1f2937;
+            padding: 8px 6px;
+            vertical-align: top;
+          }
+
+          .report-table th {
+            background: #e5e7eb;
+            text-align: left;
+            font-weight: 700;
+            font-size: 15px;
+          }
+
+          .report-table th:last-child,
+          .report-table td:last-child {
+            width: 38%;
+          }
+
+          .report-table .right {
+            text-align: right;
+          }
+
+          .empty-state {
+            text-align: center;
+            padding: 14px 10px;
+            color: #6b7280;
+            font-size: 15px;
+          }
+
+          .signature-block {
+            margin-top: 38px;
+            display: flex;
+            justify-content: flex-start;
+          }
+
+          .signature {
+            width: 240px;
+            text-align: left;
+            font-size: 15px;
+          }
+
+          .signature-line {
+            border-top: 1px solid #111827;
+            margin-bottom: 6px;
+            height: 24px;
+          }
+
+          .signature small {
+            display: block;
+            margin-top: 4px;
+            color: #4b5563;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="page">
+          <div class="letterhead">
+            ${letterheadSrc ? `<img src="${letterheadSrc}" alt="KSFE Letterhead" />` : ''}
+          </div>
+
+          <div class="date-display">Date : ${escapeHtml(new Date(reportData.generatedAt).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' }))}</div>
+
+          <div class="title-block">
+            <h2>Schedule of salary deduction for ${escapeHtml(getPolicyTypeFullName(reportData.policy.policy_type))}</h2>
+            <div class="title-underline"></div>
+          </div>
+
+          <section class="details-section">
+            <div class="detail-row">
+              <div class="detail-inline"><span class="detail-label">Full Name:</span>&nbsp;<span class="detail-value">${escapeHtml(reportData.policy.employee_name)}</span></div>
+              <div class="detail-inline"><span class="detail-label">Employee Code:</span>&nbsp;<span class="detail-value">${escapeHtml(reportData.policy.employee_code)}</span></div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-inline"><span class="detail-label">Policy No:</span>&nbsp;<span class="detail-value">${escapeHtml(reportData.policy.policy_no)}</span></div>
+              <div class="detail-inline"><span class="detail-label">Date Of Death:</span>&nbsp;<span class="detail-value">${escapeHtml(formatDateLabel(reportData.policy.maturity_date))}</span></div>
+            </div>
+          </section>
+
+          <section class="section">
+            <table class="report-table">
+              <thead>
+                <tr>
+                  <th>Due Month of Premium</th>
+                  <th>Amount Deducted</th>
+                  <th>Salary Month</th>
+                  <th>Date of Encashment</th>
+                  <th>Receipt No / Cheque Details</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rowsHtml}
+              </tbody>
+            </table>
+          </section>
+
+          <section class="signature-block">
+            <div class="signature">
+              <div>Yours faithfully,</div>
+              <div style="margin-top: 4px; font-weight: 600;">For The K.S.F.E. LTD</div>
+              <div style="margin-top: 70px; font-weight: 600;">DEPUTY GENERAL MANAGER (P&HR)</div>
+            </div>
+          </section>
+        </div>
+      </body>
+    </html>
+  `;
+};
+
+export const getPolicyReportService = async (policyId: number) => {
+  if (!Number.isInteger(policyId) || policyId <= 0) {
+    throw new Error('Invalid policy id');
+  }
+
+  const report = await getPolicyReportDataRepo(policyId);
+
+  if (!report.policy) {
+    throw new Error(`Policy with id '${policyId}' not found`);
+  }
+
+  const remittances: PolicyReportData['remittances'] = report.remittances.map((remittance: any) => ({
+    policy_remittance_id: Number(remittance.policy_remittance_id),
+    employee_policy_id: Number(remittance.employee_policy_id),
+    salary_month: String(remittance.salary_month || ''),
+    due_month: String(remittance.due_month || ''),
+    amount_deducted: Number(remittance.amount_deducted || 0),
+    policy_cheque_id: remittance.policy_cheque_id ? Number(remittance.policy_cheque_id) : null,
+    encashment_date: remittance.encashment_date || null,
+    receipt_no: remittance.receipt_no || null,
+  }));
+
+  const totalAmountDeducted = remittances.reduce<number>((sum, item) => sum + Number(item.amount_deducted || 0), 0);
+
+  return {
+    policy: {
+      employee_policy_id: Number(report.policy.employee_policy_id),
+      employee_code: String(report.policy.employee_code),
+      employee_name: String(report.policy.employee_name || ''),
+      policy_no: String(report.policy.policy_no),
+      policy_type: report.policy.policy_type,
+      premium: Number(report.policy.premium || 0),
+      maturity_date: report.policy.maturity_date,
+      status: Number(report.policy.status ?? 1),
+    },
+    remittances,
+    generatedAt: new Date().toISOString(),
+    totalAmountDeducted,
+  } as PolicyReportData;
+};
+
+export const generatePolicyPdfReport = async (policyId: number) => {
+  const reportData = await getPolicyReportService(policyId);
+  const useFrontendPreview = String(process.env.PDF_USE_FRONTEND || 'false').toLowerCase() === 'true';
+  const frontendBase = process.env.FRONTEND_PREVIEW_BASE_URL || 'http://localhost:5173';
+  const authToken = process.env.PDF_AUTH_TOKEN || '';
+
+  const browser = await puppeteer.launch({
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+  });
+
+  try {
+    const page = await browser.newPage();
+
+    if (useFrontendPreview) {
+      // Navigate to a blank page first so we can set localStorage if needed
+      await page.goto('about:blank');
+
+      if (authToken) {
+        try {
+          await page.evaluate((token) => {
+            localStorage.setItem('token', token);
+          }, authToken);
+        } catch (e) {
+          // ignore localStorage set failures
+        }
+      }
+
+      const previewUrl = `${frontendBase.replace(/\/+$/, '')}/insurance/policies/${policyId}/report?_ts=${Date.now()}`;
+      await page.goto(previewUrl, { waitUntil: 'networkidle0' });
+    } else {
+      const html = generatePolicyReportHtml(reportData as PolicyReportRenderData);
+      await page.setContent(html, { waitUntil: 'load' });
+    }
+
+    await page.emulateMediaType('screen');
+
+    const pdf = await page.pdf({
+      format: 'A4',
+      printBackground: true,
+      margin: {
+        top: '20px',
+        right: '20px',
+        bottom: '20px',
+        left: '20px',
+      },
+    });
+
+    await page.close();
+    return {
+      buffer: Buffer.from(pdf),
+      filename: `policy-report-${reportData.policy.policy_no}.pdf`,
+    };
+  } finally {
+    await browser.close();
   }
 };
 

@@ -3,6 +3,31 @@ import type { CreatePolicyPayload, UpdatePolicyPayload } from "../types/insuranc
 
 export type MonthlyReportType = "GIS" | "SLI";
 
+export type PolicyReportResponse = {
+  policy: {
+    employee_policy_id: number;
+    employee_code: string;
+    employee_name: string;
+    policy_no: string;
+    policy_type: "GIS" | "SLI";
+    premium: number;
+    maturity_date: string | null;
+    status: number;
+  };
+  remittances: Array<{
+    policy_remittance_id: number;
+    employee_policy_id: number;
+    salary_month: string;
+    due_month: string;
+    amount_deducted: number;
+    policy_cheque_id: number | null;
+    encashment_date: string | null;
+    receipt_no: string | null;
+  }>;
+  generatedAt: string;
+  totalAmountDeducted: number;
+};
+
 /**
  * GET  policies by employee code
  */
@@ -112,6 +137,19 @@ export const downloadMonthlyReport = (params: {
 }) => {
   return api.get("/insurance/monthly-report", {
     params,
+    responseType: "blob",
+  });
+};
+
+export const getPolicyReport = (policyId: string | number) => {
+  return api.get<PolicyReportResponse>(`/insurance/policies/${policyId}/report`);
+};
+
+export const downloadPolicyReport = (policyId: string | number) => {
+  // Add a timestamp to avoid cached responses and force backend regeneration
+  const ts = Date.now();
+  return api.get(`/insurance/policies/${policyId}/report/download`, {
+    params: { _ts: ts },
     responseType: "blob",
   });
 };

@@ -10,12 +10,14 @@ const forcedPermissions = [
   "editInsurance",
   "deleteInsurance",
   // "deactivateInsurance",
+  "",
   "viewSLI",
   "editSLI",
   "viewGIS",
   "editGIS",
   "viewMonthlyReport",
   "exportMonthlyReport",
+  "exportPolicyReport",
 ]
 
 export const loginService = async (

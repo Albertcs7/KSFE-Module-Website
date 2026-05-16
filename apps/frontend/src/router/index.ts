@@ -51,6 +51,11 @@ const MODULE_REQUIREMENTS: Record<string, string> = {
   // Example: '/reports': 'reportsModule',
 }
 
+const PERMISSION_REQUIREMENTS: Array<{ pattern: RegExp; permission: string }> = [
+  { pattern: /^\/insurance\/policies\/\d+\/report$/, permission: 'viewInsurance' },
+  { pattern: /^\/insurance\/policies\/\d+\/report\/download$/, permission: 'exportPolicyReport' },
+]
+
 /**
  * Public routes that don't require authentication
  */
@@ -87,6 +92,25 @@ router.beforeEach((to, from, next) => {
 
   const isAdmin = authStore.roleName?.toLowerCase() === 'admin'
   const userModules = authStore.modules || []
+  const userPermissions = authStore.permissions?.map(permission => permission.name) || []
+
+  const explicitPermissionRequirement = PERMISSION_REQUIREMENTS.find(rule => rule.pattern.test(to.path))
+
+  if (explicitPermissionRequirement) {
+    if (isAdmin) {
+      next()
+      return
+    }
+
+    if (!userPermissions.includes(explicitPermissionRequirement.permission)) {
+      console.warn(`[PERMISSION] Access DENIED - User lacks permission '${explicitPermissionRequirement.permission}' for route: ${to.path}`)
+      next('/unauthorized')
+      return
+    }
+
+    next()
+    return
+  }
   
   // Get the required module for this route
   const requiredModule = MODULE_REQUIREMENTS[to.path] || 
