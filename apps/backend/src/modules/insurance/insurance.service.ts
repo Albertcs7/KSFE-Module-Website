@@ -5,7 +5,7 @@ import puppeteer from "puppeteer";
 import { FRONTEND_PREVIEW_BASE_URL, PDF_AUTH_TOKEN, PDF_MAX_CONCURRENCY, PDF_USE_FRONTEND } from "../../config/env";
 import { logger } from "../../core/logger/logger";
 import { db } from "../../database/mysql";
-import { createPolicyRepo, deactivatePolicyRepo, getAllPoliciesRepo, getMonthlyReportDataRepo, getPolicyByNumberRepo, getPolicyRemittancesRepo, getPolicyReportDataRepo, searchPoliciesCountRepo, searchPoliciesRepo, updatePolicyRepo } from "./insurance.repository";
+import { attachChequeToMonthTypeRemittancesRepo, createChequeRepo, createPolicyRepo, deactivatePolicyRepo, getAllPoliciesRepo, getEmployeePolicyForUpdateRepo, getLatestChequeForMonthTypeForUpdateRepo, getMonthlyReportDataRepo, getPolicyByNumberRepo, getPolicyRemittancesRepo, getPolicyReportDataRepo, searchPoliciesCountRepo, searchPoliciesRepo, updateChequeByIdRepo, updatePolicyRepo, upsertRemittanceRepo } from "./insurance.repository";
 import { ExcelBufferResult, GetMonthlyReportParams, MonthlyReportRow, PolicyReportData } from "./insurance.types";
 
 type SearchPolicyRow = {
@@ -192,16 +192,14 @@ export const createRemittanceService = async (data: {
       }
 
       // Lock the employee_policy row to serialize remittance inserts for this policy
-      const [rows]: any = await conn.query(
-        `SELECT employee_policy_id FROM employee_policy WHERE employee_code = ? AND policy_no = ? FOR UPDATE`,
-        [empCodeNum, policyNumber]
-      );
+      const rows: any = await getEmployeePolicyForUpdateRepo(empCodeNum, policyNumber, conn);
 
       if (!rows || rows.length === 0) {
         throw new Error(`Policy not found for employee ${empCode} with policy number ${policyNumber}`);
       }
 
       const employee_policy_id = rows[0].employee_policy_id;
+      const policy_type = rows[0].policy_type as 'GIS' | 'SLI';
 
       // Convert `YYYY-MM` (from <input type="month">) to `YYYY-MM-01` for MySQL DATE columns
       const toSqlDate = (ym: string) => {
@@ -214,13 +212,24 @@ export const createRemittanceService = async (data: {
       const salaryMonthDate = toSqlDate(salaryMonth);
       const dueMonthDate = toSqlDate(dueMonth);
 
-      const [result]: any = await conn.query(
-        `
-          INSERT INTO policy_remittance
-          (employee_policy_id, salary_month, due_month, amount_deducted, policy_cheque_id)
-          VALUES (?, ?, ?, ?, ?)
-        `,
-        [employee_policy_id, salaryMonthDate, dueMonthDate, amountDeducted, chequeId ? Number(chequeId) : null]
+      // Auto-link remittance to existing cheque for the same month+policy type when chequeId is not supplied.
+      const matchingCheques: any = await getLatestChequeForMonthTypeForUpdateRepo(salaryMonthDate, policy_type, conn);
+
+      const explicitChequeId = chequeId ? Number(chequeId) : null;
+      if (explicitChequeId !== null && Number.isNaN(explicitChequeId)) {
+        throw new Error("Invalid cheque id");
+      }
+      const resolvedChequeId = explicitChequeId ?? (matchingCheques[0]?.policy_cheque_id ?? null);
+
+      const result: any = await upsertRemittanceRepo(
+        {
+          employee_policy_id,
+          salary_month: salaryMonthDate,
+          due_month: dueMonthDate,
+          amount_deducted: amountDeducted,
+          policy_cheque_id: resolvedChequeId,
+        },
+        conn
       );
 
       await conn.commit();
@@ -233,12 +242,6 @@ export const createRemittanceService = async (data: {
     }
 
   } catch (err: any) {
-
-    // ✅ Handle duplicate (employee_policy_id + salary_month)
-    if (err.code === "ER_DUP_ENTRY") {
-      throw new Error("Remittance already exists for this month");
-    }
-
     throw err;
   }
 };
@@ -802,51 +805,48 @@ export const createChequeAndAttachService = async (data: {
   const salaryMonthDate = toSqlDate(salaryMonth);
 
   try {
-    // Use a transaction to create cheque and attach atomically
+    // Use a transaction to upsert cheque and attach atomically
     const conn = await db.getConnection();
     try {
       await conn.beginTransaction();
 
-      const [chequeResult]: any = await conn.query(
-        `
-          INSERT INTO policy_cheque
-          (encashment_date, receipt_no, salary_month, policy_type)
-          VALUES (?, ?, ?, ?)
-        `,
-        [encashmentDate, receiptNo, salaryMonthDate, policyType]
-      );
+      const existingCheques: any = await getLatestChequeForMonthTypeForUpdateRepo(salaryMonthDate, policyType, conn);
 
-      const chequeId = chequeResult.insertId;
+      let chequeId: number;
+      let operation: 'created' | 'updated' = 'created';
 
-      // Lock matching remittances to avoid concurrent attachments
-      const [remittances]: any = await conn.query(
-        `
-        SELECT pr.policy_remittance_id
-        FROM policy_remittance pr
-        INNER JOIN employee_policy ep 
-          ON ep.employee_policy_id = pr.employee_policy_id
-        WHERE pr.salary_month = ?
-          AND ep.policy_type = ?
-          AND pr.policy_cheque_id IS NULL
-        FOR UPDATE
-        `,
-        [salaryMonthDate, policyType]
-      );
-
-      const remittanceIds = remittances.map((r: any) => r.policy_remittance_id);
-
-      if (remittanceIds.length > 0) {
-        const placeholders = remittanceIds.map(() => '?').join(',');
-        const updateSql = `UPDATE policy_remittance SET policy_cheque_id = ? WHERE policy_remittance_id IN (${placeholders})`;
-        await conn.query(updateSql, [chequeId, ...remittanceIds]);
+      if (existingCheques.length > 0) {
+        chequeId = Number(existingCheques[0].policy_cheque_id);
+        await updateChequeByIdRepo(
+          chequeId,
+          { encashment_date: encashmentDate, receipt_no: receiptNo },
+          conn
+        );
+        operation = 'updated';
+      } else {
+        const chequeResult: any = await createChequeRepo(
+          {
+            encashment_date: encashmentDate,
+            receipt_no: receiptNo,
+            salary_month: salaryMonthDate,
+            policy_type: policyType,
+          },
+          conn
+        );
+        chequeId = Number(chequeResult.insertId);
       }
+
+      const attachResult: any = await attachChequeToMonthTypeRemittancesRepo(
+        { chequeId, salaryMonth: salaryMonthDate, policyType },
+        conn
+      );
 
       await conn.commit();
 
       return {
-        message: "Cheque created successfully",
+        message: operation === 'created' ? "Cheque created successfully" : "Cheque updated successfully",
         chequeId,
-        attachedRemittances: remittanceIds.length
+        attachedRemittances: Number(attachResult?.affectedRows || 0)
       };
     } catch (e) {
       await conn.rollback();

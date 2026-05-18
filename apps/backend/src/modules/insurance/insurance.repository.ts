@@ -1,5 +1,7 @@
 import { db } from "../../database/mysql";
 
+const getExecutor = (conn?: any) => conn ?? db;
+
 type SearchPolicyRow = {
   employee_policy_id: number;
   employee_code: number | string;
@@ -251,6 +253,71 @@ export const createRemittanceRepo = async (data: {
   return result;
 };
 
+export const getEmployeePolicyForUpdateRepo = async (
+  employeeCode: number,
+  policyNo: string,
+  conn?: any
+) => {
+  const executor = getExecutor(conn);
+  const [rows]: any = await executor.query(
+    `SELECT employee_policy_id, policy_type FROM employee_policy WHERE employee_code = ? AND policy_no = ? FOR UPDATE`,
+    [employeeCode, policyNo]
+  );
+  return rows;
+};
+
+export const getLatestChequeForMonthTypeForUpdateRepo = async (
+  salaryMonth: string,
+  policyType: 'GIS' | 'SLI',
+  conn?: any
+) => {
+  const executor = getExecutor(conn);
+  const [rows]: any = await executor.query(
+    `
+      SELECT policy_cheque_id
+      FROM policy_cheque
+      WHERE salary_month = ? AND policy_type = ?
+      ORDER BY policy_cheque_id DESC
+      LIMIT 1
+      FOR UPDATE
+    `,
+    [salaryMonth, policyType]
+  );
+  return rows;
+};
+
+export const upsertRemittanceRepo = async (
+  data: {
+    employee_policy_id: number;
+    salary_month: string;
+    due_month: string;
+    amount_deducted: number;
+    policy_cheque_id: number | null;
+  },
+  conn?: any
+) => {
+  const executor = getExecutor(conn);
+  const [result]: any = await executor.query(
+    `
+      INSERT INTO policy_remittance
+      (employee_policy_id, salary_month, due_month, amount_deducted, policy_cheque_id)
+      VALUES (?, ?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE
+        due_month = VALUES(due_month),
+        amount_deducted = VALUES(amount_deducted),
+        policy_cheque_id = COALESCE(VALUES(policy_cheque_id), policy_cheque_id)
+    `,
+    [
+      data.employee_policy_id,
+      data.salary_month,
+      data.due_month,
+      data.amount_deducted,
+      data.policy_cheque_id,
+    ]
+  );
+  return result;
+};
+
 
 /*-------------------
 ADDING CHEQUE DETAILS
@@ -261,7 +328,8 @@ export const createChequeRepo = async (data: {
   receipt_no: string;
   salary_month: string;
   policy_type: 'GIS' | 'SLI';
-}) => {
+}, conn?: any) => {
+  const executor = getExecutor(conn);
   const query = `
     INSERT INTO policy_cheque
     (encashment_date, receipt_no, salary_month, policy_type)
@@ -275,7 +343,43 @@ export const createChequeRepo = async (data: {
     data.policy_type
   ];
 
-  const [result]: any = await db.query(query, values);
+  const [result]: any = await executor.query(query, values);
+  return result;
+};
+
+export const updateChequeByIdRepo = async (
+  chequeId: number,
+  data: { encashment_date: string; receipt_no: string },
+  conn?: any
+) => {
+  const executor = getExecutor(conn);
+  const [result]: any = await executor.query(
+    `
+      UPDATE policy_cheque
+      SET encashment_date = ?, receipt_no = ?
+      WHERE policy_cheque_id = ?
+    `,
+    [data.encashment_date, data.receipt_no, chequeId]
+  );
+  return result;
+};
+
+export const attachChequeToMonthTypeRemittancesRepo = async (
+  data: { chequeId: number; salaryMonth: string; policyType: 'GIS' | 'SLI' },
+  conn?: any
+) => {
+  const executor = getExecutor(conn);
+  const [result]: any = await executor.query(
+    `
+      UPDATE policy_remittance pr
+      INNER JOIN employee_policy ep
+        ON ep.employee_policy_id = pr.employee_policy_id
+      SET pr.policy_cheque_id = ?
+      WHERE pr.salary_month = ?
+        AND ep.policy_type = ?
+    `,
+    [data.chequeId, data.salaryMonth, data.policyType]
+  );
   return result;
 };
 
