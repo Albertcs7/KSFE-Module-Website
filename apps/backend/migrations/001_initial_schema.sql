@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
 CREATE TABLE IF NOT EXISTS employee_policy (
   employee_policy_id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
   employee_code VARCHAR(50) NOT NULL,
-  employee_name VARCHAR(255) NULL,
+  employee_name VARCHAR(50) NULL,
   policy_no VARCHAR(100) NOT NULL,
   policy_type ENUM('GIS','SLI') NOT NULL,
   premium DECIMAL(12,2) DEFAULT NULL,
@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS policy_remittance (
   due_month DATE NOT NULL,
   amount_deducted DECIMAL(12,2) NOT NULL,
   policy_cheque_id INT DEFAULT NULL,
-  receipt_no VARCHAR(100) DEFAULT NULL,
+  receipt_no VARCHAR(80) DEFAULT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY ux_emp_salary (employee_policy_id, salary_month),
   INDEX idx_employee_policy_id (employee_policy_id),

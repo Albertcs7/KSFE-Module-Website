@@ -2,6 +2,7 @@ import ExcelJS from "exceljs";
 import fs from "fs";
 import path from "path";
 import puppeteer from "puppeteer";
+import { FRONTEND_PREVIEW_BASE_URL, PDF_AUTH_TOKEN, PDF_MAX_CONCURRENCY, PDF_USE_FRONTEND } from "../../config/env";
 import { logger } from "../../core/logger/logger";
 import { db } from "../../database/mysql";
 import { createPolicyRepo, deactivatePolicyRepo, getAllPoliciesRepo, getMonthlyReportDataRepo, getPolicyByNumberRepo, getPolicyRemittancesRepo, getPolicyReportDataRepo, searchPoliciesCountRepo, searchPoliciesRepo, updatePolicyRepo } from "./insurance.repository";
@@ -34,6 +35,32 @@ type SearchRemittanceRow = {
 };
 
 type PolicyReportRenderData = PolicyReportData;
+
+const POLICY_PDF_MAX_CONCURRENCY = Math.max(1, PDF_MAX_CONCURRENCY);
+let activePdfJobs = 0;
+const pdfQueue: Array<() => void> = [];
+
+const acquirePdfSlot = async (): Promise<void> => {
+  if (activePdfJobs < POLICY_PDF_MAX_CONCURRENCY) {
+    activePdfJobs += 1;
+    return;
+  }
+
+  await new Promise<void>((resolve) => {
+    pdfQueue.push(() => {
+      activePdfJobs += 1;
+      resolve();
+    });
+  });
+};
+
+const releasePdfSlot = () => {
+  activePdfJobs = Math.max(0, activePdfJobs - 1);
+  const next = pdfQueue.shift();
+  if (next) {
+    next();
+  }
+};
 
 /* 
   VIEWING THE EMPLOYEE POLICIES
@@ -682,9 +709,8 @@ export const getPolicyReportService = async (policyId: number) => {
 
 export const generatePolicyPdfReport = async (policyId: number) => {
   const reportData = await getPolicyReportService(policyId);
-  const useFrontendPreview = String(process.env.PDF_USE_FRONTEND || 'false').toLowerCase() === 'true';
-  const frontendBase = process.env.FRONTEND_PREVIEW_BASE_URL || 'http://localhost:5173';
-  const authToken = process.env.PDF_AUTH_TOKEN || '';
+
+  await acquirePdfSlot();
 
   const browser = await puppeteer.launch({
     headless: true,
@@ -693,25 +719,33 @@ export const generatePolicyPdfReport = async (policyId: number) => {
 
   try {
     const page = await browser.newPage();
+    const html = generatePolicyReportHtml(reportData as PolicyReportRenderData);
 
-    if (useFrontendPreview) {
-      // Navigate to a blank page first so we can set localStorage if needed
-      await page.goto('about:blank');
+    if (PDF_USE_FRONTEND) {
+      try {
+        // Navigate to a blank page first so we can set localStorage if needed.
+        await page.goto('about:blank');
 
-      if (authToken) {
-        try {
-          await page.evaluate((token) => {
-            localStorage.setItem('token', token);
-          }, authToken);
-        } catch (e) {
-          // ignore localStorage set failures
+        if (PDF_AUTH_TOKEN) {
+          try {
+            await page.evaluate((token) => {
+              localStorage.setItem('token', token);
+            }, PDF_AUTH_TOKEN);
+          } catch {
+            // ignore localStorage set failures
+          }
         }
-      }
 
-      const previewUrl = `${frontendBase.replace(/\/+$/, '')}/insurance/policies/${policyId}/report?_ts=${Date.now()}`;
-      await page.goto(previewUrl, { waitUntil: 'networkidle0' });
+        const previewUrl = `${FRONTEND_PREVIEW_BASE_URL.replace(/\/+$/, '')}/insurance/policies/${policyId}/report?_ts=${Date.now()}`;
+        await page.goto(previewUrl, { waitUntil: 'networkidle0' });
+      } catch (error: any) {
+        logger.warn('Frontend policy report preview failed; falling back to backend HTML', {
+          policyId,
+          message: error?.message,
+        });
+        await page.setContent(html, { waitUntil: 'load' });
+      }
     } else {
-      const html = generatePolicyReportHtml(reportData as PolicyReportRenderData);
       await page.setContent(html, { waitUntil: 'load' });
     }
 
@@ -735,6 +769,7 @@ export const generatePolicyPdfReport = async (policyId: number) => {
     };
   } finally {
     await browser.close();
+    releasePdfSlot();
   }
 };
 

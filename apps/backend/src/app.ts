@@ -1,14 +1,9 @@
 import http from "http";
+import { CORS_ALLOWED_ORIGINS } from "./config/env";
 import { rateLimit } from "./core/http/rateLimiter";
 import { attachRequestLogger } from "./core/http/requestLogger";
 import { logger } from "./core/logger/logger";
 import { router } from "./routes";
-
-const allowedOrigins = [
-  "http://localhost:5173",
-  "https://yourfrontend.com",
-  "http://localhost:4173",
-];
 
 export const createApp = () => {
   const server = http.createServer(async (req, res) => {
@@ -18,7 +13,7 @@ export const createApp = () => {
     const origin = req.headers.origin;
     res.setHeader("Vary", "Origin");
 
-    if (allowedOrigins.includes(origin || "")) {
+    if (CORS_ALLOWED_ORIGINS.includes(origin || "")) {
       res.setHeader("Access-Control-Allow-Origin", origin as string);
     }
 

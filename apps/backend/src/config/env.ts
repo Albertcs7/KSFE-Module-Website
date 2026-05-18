@@ -67,3 +67,11 @@ export const DB_NAME = requiredEnv("DB_NAME");
 
 export const RATE_LIMIT_REQUESTS = Number(process.env.RATE_LIMIT_REQUESTS || "60");
 export const RATE_LIMIT_WINDOW_MS = Number(process.env.RATE_LIMIT_WINDOW_MS || "60000");
+export const CORS_ALLOWED_ORIGINS = (process.env.CORS_ALLOWED_ORIGINS || "http://localhost:5173,http://localhost:4173,http://localhost:5174")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+export const PDF_USE_FRONTEND = String(process.env.PDF_USE_FRONTEND || "false").toLowerCase() === "true";
+export const PDF_AUTH_TOKEN = process.env.PDF_AUTH_TOKEN || "";
+export const FRONTEND_PREVIEW_BASE_URL = process.env.FRONTEND_PREVIEW_BASE_URL || "http://localhost:5173";
+export const PDF_MAX_CONCURRENCY = Number(process.env.PDF_MAX_CONCURRENCY || "2");

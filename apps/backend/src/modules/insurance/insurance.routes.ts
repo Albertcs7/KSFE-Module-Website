@@ -1,7 +1,7 @@
 import { IncomingMessage, ServerResponse } from "http";
 import { authenticate, authorize, type AuthenticatedRequest } from "../../core/auth/auth.middleware";
 import { runMiddlewares } from "../../core/http/middlewareRunner";
-import { createCheque, createPolicy, createRemittance, deactivatePolicy, deletePolicy, downloadPolicyReport, getAllPolicies, getMonthlyReport, getPolicyReport, searchPolicies, updatePolicy } from "./insurance.controller";
+import { createCheque, createPolicy, createRemittance, deactivatePolicy, deletePolicy, downloadPolicyReport, getAllPolicies, getMonthlyReport, getPolicyReport, getPolicyReportHtml, searchPolicies, updatePolicy } from "./insurance.controller";
 
 export const insuranceRoutes = async (
   req: IncomingMessage,
@@ -27,9 +27,16 @@ export const insuranceRoutes = async (
     return true;
   }
 
+  // GET SINGLE POLICY REPORT HTML PREVIEW (backend-rendered)
+  if (req.method === "GET" && pathname.match(/^\/insurance\/policies\/\d+\/report\/html$/)) {
+    if (!requireAccess("viewInsurance")) return true;
+    await getPolicyReportHtml(req, res);
+    return true;
+  }
+
   // GET SINGLE POLICY REPORT PDF DOWNLOAD
   if (req.method === "GET" && pathname.match(/^\/insurance\/policies\/\d+\/report\/download$/)) {
-    if (!requireAccess("exportPolicyReport")) return true;
+    if (!requireAccess("viewInsurance")) return true;
     await downloadPolicyReport(req, res);
     return true;
   }

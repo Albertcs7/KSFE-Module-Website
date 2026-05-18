@@ -1,7 +1,7 @@
 import { IncomingMessage, ServerResponse } from "http";
 import { logger } from "../../core/logger/logger";
 import { parseBody } from "../../utils/parseBody";
-import { createChequeAndAttachService, createPolicyService, createRemittanceService, deactivatePolicyService, deletePolicyService, generateMonthlyExcelReport, generatePolicyPdfReport, getAllPoliciesService, getPolicyReportService, searchPoliciesService, updatePolicyService } from "./insurance.service";
+import { createChequeAndAttachService, createPolicyService, createRemittanceService, deactivatePolicyService, deletePolicyService, generateMonthlyExcelReport, generatePolicyPdfReport, generatePolicyReportHtml, getAllPoliciesService, getPolicyReportService, searchPoliciesService, updatePolicyService } from "./insurance.service";
 
 export const getAllPolicies = async (
   req: IncomingMessage,
@@ -378,5 +378,30 @@ export const downloadPolicyReport = async (req: IncomingMessage, res: ServerResp
     const statusCode = error.message?.includes('not found') ? 404 : 500;
     res.writeHead(statusCode);
     res.end(JSON.stringify({ message: error.message || 'Failed to generate policy report PDF' }));
+  }
+};
+
+export const getPolicyReportHtml = async (req: IncomingMessage, res: ServerResponse) => {
+  try {
+    const url = new URL(req.url || '', `http://${req.headers.host}`);
+    const pathParts = url.pathname.split('/').filter(Boolean);
+    const policyId = Number(pathParts[pathParts.length - 3]);
+
+    if (!Number.isInteger(policyId) || policyId <= 0) {
+      res.writeHead(400);
+      res.end(JSON.stringify({ message: 'Invalid policy id' }));
+      return;
+    }
+
+    const reportData = await getPolicyReportService(policyId);
+    const html = generatePolicyReportHtml(reportData);
+
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    res.end(html);
+  } catch (error: any) {
+    logger.error('Policy report HTML fetch error', { message: error.message });
+    const statusCode = error.message?.includes('not found') ? 404 : 400;
+    res.writeHead(statusCode);
+    res.end(JSON.stringify({ message: error.message || 'Failed to fetch policy report HTML' }));
   }
 };

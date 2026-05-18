@@ -486,6 +486,219 @@ Module: Insurance front-end APIs
 
 ---
 
+## Feature Group: Policy Report Generation (HTML & PDF)
+
+### Overview
+
+Policy reports provide formatted A4-sized schedules of salary deductions for insurance policies. The system generates reports in two formats:
+
+1. **HTML (backend-rendered)**: Complete page with styles, letterhead, policy details, and remittance table.
+2. **PDF (via Puppeteer)**: Binary PDF file suitable for download or print.
+
+Both formats are rendered entirely on the backend and served via HTTP endpoints with authentication and authorization checks.
+
+### Backend Infrastructure
+
+**File:** apps/backend/src/modules/insurance/insurance.routes.ts
+
+- New endpoints for policy reports (with `viewInsurance` permission):
+  - `GET /insurance/policies/:id/report` → `getPolicyReport` (fetch report data as JSON)
+  - `GET /insurance/policies/:id/report/html` → `getPolicyReportHtml` (serve backend-rendered HTML)
+  - `GET /insurance/policies/:id/report/download` → `downloadPolicyReport` (generate and serve PDF)
+
+**File:** apps/backend/src/modules/insurance/insurance.controller.ts
+
+Three controller functions handle policy report endpoints:
+
+- `getPolicyReport(req, res)`:
+  - Purpose: Fetch and return policy report data (JSON) for a given policy ID.
+  - Workflow:
+    1. Extract policy ID from URL path: `/insurance/policies/:id/report` → index [length-2].
+    2. Validate policy ID (integer > 0).
+    3. Call `getPolicyReportService(policyId)`.
+    4. Return 200 with JSON report data; 400 if invalid ID, 404 if not found.
+  - Data Flow:
+    - Input: URL path parameter (policy ID).
+    - Output: JSON object containing `{ policy, remittances, generatedAt, totalAmountDeducted }`.
+
+- `getPolicyReportHtml(req, res)`:
+  - Purpose: Serve complete, backend-rendered HTML report for inline display or printing.
+  - Workflow:
+    1. Extract policy ID from URL path: `/insurance/policies/:id/report/html` → index [length-3].
+    2. Validate policy ID.
+    3. Call `getPolicyReportService(policyId)` to fetch data.
+    4. Call `generatePolicyReportHtml(reportData)` to build complete HTML string.
+    5. Return 200 with `Content-Type: text/html; charset=utf-8` and HTML string.
+  - Data Flow:
+    - Input: URL path parameter (policy ID).
+    - Transformations: fetch policy data → format dates, amounts → inject into HTML template.
+    - Output: Complete, self-contained HTML document (no external CSS/JS dependencies).
+  - Security: Requires `viewInsurance` permission via auth middleware.
+
+- `downloadPolicyReport(req, res)`:
+  - Purpose: Generate PDF report and serve as downloadable attachment.
+  - Workflow:
+    1. Extract policy ID from URL path: `/insurance/policies/:id/report/download` → index [length-3].
+    2. Validate policy ID.
+    3. Call `generatePolicyPdfReport(policyId)`.
+    4. Return 200 with `Content-Type: application/pdf`, `Content-Disposition: attachment; filename="..."`, and PDF buffer.
+  - Data Flow:
+    - Input: URL path parameter (policy ID).
+    - Output: Binary PDF buffer; HTTP response headers for download.
+  - Status codes: 400 invalid ID, 404 not found, 500 generation failure.
+
+**File:** apps/backend/src/modules/insurance/insurance.service.ts
+
+Three key functions manage policy report generation:
+
+- `getPolicyReportService(policyId)`:
+  - Purpose: Fetch and normalize report data from database.
+  - Workflow:
+    1. Validate policy ID (integer > 0); throw error if invalid.
+    2. Call `getPolicyReportDataRepo(policyId)` to fetch from DB.
+    3. Check if policy exists; throw 404 error if not found.
+    4. Normalize remittance array: convert fields to proper types (number, string, date).
+    5. Calculate `totalAmountDeducted` by summing all remittance amounts.
+    6. Return structured object: `{ policy, remittances, generatedAt, totalAmountDeducted }`.
+  - Data Flow:
+    - Input: policy ID (number).
+    - DB query: fetch policy record and all associated remittances (including linked cheque data).
+    - Output: normalized TypeScript object matching `PolicyReportData` type.
+
+- `generatePolicyReportHtml(reportData)`:
+  - Purpose: Transform normalized report data into complete A4 HTML document with inline CSS.
+  - Template structure:
+    - `<!doctype html>` with A4 page sizing (`210mm × 297mm`).
+    - **Letterhead**: KSFE logo embedded as base64 data URI.
+    - **Date**: Generated date (top right, right-aligned).
+    - **Title**: Centered policy type heading (e.g., "Schedule of salary deduction for GIS").
+    - **Details section**: 2-column layout with employee name, code, policy no, maturity date.
+    - **Remittance table**:
+      - 5 columns: Due Month | Amount Deducted | Salary Month | Date of Encashment | Receipt No / Cheque Details.
+      - Rows: one per remittance, amount formatted with Indian locale (₹ symbol, commas, 2 decimals).
+      - Empty state message if no remittances.
+    - **Signature block**: "Yours faithfully, For The K.S.F.E. LTD, DEPUTY GENERAL MANAGER (P&HR)".
+    - **CSS**: embedded `<style>` tag with print-friendly styles (A4 sizing, borders, grid layout, no background colors for print).
+  - Data Flow:
+    - Input: `PolicyReportData` object (policy details + remittances array).
+    - Transformations: HTML escape all user data; format dates via `formatDateLabel()`; format amounts via `toLocaleString()`; map remittances to table rows.
+    - Output: string containing complete HTML document.
+  - Security: All user data is HTML-escaped to prevent XSS in rendered output.
+
+- `generatePolicyPdfReport(policyId)`:
+  - Purpose: Launch headless browser (Puppeteer), render report HTML, and export PDF.
+  - Workflow:
+    1. Acquire PDF concurrency slot (see PDF queue management below).
+    2. Fetch report data via `getPolicyReportService(policyId)`.
+    3. Launch Puppeteer headless browser with sandbox disabled.
+    4. If `PDF_USE_FRONTEND=true` (from env):
+       - Navigate to frontend policy report preview URL with timestamp query param.
+       - Set localStorage token if `PDF_AUTH_TOKEN` is provided.
+       - Wait for network idle; catch errors and fall back to backend HTML.
+    5. Else set page content directly to backend-generated HTML.
+    6. Emulate screen media type.
+    7. Generate PDF via `page.pdf()` with A4 format, print background enabled, 20px margins.
+    8. Release concurrency slot.
+    9. Return `{ buffer, filename }` where filename is `policy-report-{policyNo}.pdf`.
+  - PDF Concurrency Management:
+    - Global counters: `activePdfJobs` (current count), `pdfQueue` (pending jobs).
+    - `acquirePdfSlot()`: if jobs < max, increment immediately; else queue callback to wait.
+    - `releasePdfSlot()`: decrement jobs; dequeue and execute next pending job.
+    - Default max: `PDF_MAX_CONCURRENCY` from env (prevents memory/resource overload).
+  - Data Flow:
+    - Input: policy ID, env config for PDF behavior.
+    - Puppeteer interactions: launch browser → create page → setContent or goto URL → emit PDF.
+    - Output: PDF binary buffer and suggested filename.
+  - Error handling: non-200 PDF fetch falls back to backend HTML with warning log.
+
+### Environment Configuration
+
+**File:** apps/backend/src/config/env.ts
+
+New environment variables for policy report generation:
+
+- `PDF_USE_FRONTEND` (boolean, default=false): If true, attempt to render PDF using frontend preview route; else use backend HTML directly.
+- `FRONTEND_PREVIEW_BASE_URL` (string, default="http://localhost:5173"): Base URL of frontend for preview navigation.
+- `PDF_AUTH_TOKEN` (string, optional): Token to inject into Puppeteer localStorage for authentication when rendering frontend preview.
+- `PDF_MAX_CONCURRENCY` (number, default=2): Maximum concurrent Puppeteer jobs to limit memory usage.
+- `CORS_ALLOWED_ORIGINS` (string, comma-separated): Origins allowed to access backend API (e.g., "http://localhost:5173,http://localhost:4173").
+
+### Frontend Integration
+
+**File:** apps/frontend/src/modules/Insurance/pages/PolicyReportPreviewPage.vue
+
+Single-page component for viewing and downloading policy reports. Accessed via `/insurance/policies/:id/report`.
+
+Script section (TypeScript):
+
+- Reactive refs:
+  - `policyId`: computed from route params (extracted and validated as numeric string).
+  - `isLoading`: boolean indicating HTML fetch in progress.
+  - `isDownloading`: boolean indicating PDF download in progress.
+  - `htmlContent`: string containing backend-rendered HTML.
+  - `errorMessage`: string for displaying fetch/auth errors.
+- Functions:
+  - `loadReportHtml()`:
+    - Validates policy ID and authentication token.
+    - Fetches from `{API_BASE_URL}/insurance/policies/{policyId}/report/html` with Bearer token.
+    - Stores HTML in `htmlContent` on success; sets `errorMessage` on failure.
+    - Called on mounted and when `policyId` changes (reactively).
+  - `handleDownloadPdf()`:
+    - Calls `downloadPolicyReport(policyId)` API function.
+    - Parses `Content-Disposition` header to extract filename.
+    - Creates blob and triggers browser download.
+    - Shows success/error toast notification.
+  - `handleBack()`: navigates back to `/insurance/policies` list.
+
+Template section (Vue):
+
+- Toolbar: title ("Policy Report"), subtitle, Back button, Download PDF button.
+- Status display:
+  - Loading spinner message: "Loading report..." when `isLoading=true`.
+  - Error message card (red background): shows `errorMessage` if present.
+  - Report display: iframe with `srcdoc` attribute containing fetched HTML when `htmlContent` exists.
+- Styling: responsive grid layout, A4-sized iframe (900px height on desktop, 600px on mobile), print-friendly (hides toolbar on `@media print`).
+
+### Data Flow: Policy Report End-to-End
+
+1. **User navigates to policy report page**: `/insurance/policies/123/report`.
+2. **Frontend route loads component**: `PolicyReportPreviewPage.vue` mounts.
+3. **onMounted hook fires**: calls `loadReportHtml()`.
+4. **Frontend fetches HTML**:
+   - URL: `GET /insurance/policies/123/report/html`.
+   - Header: `Authorization: Bearer {token}`.
+5. **Backend processes request**:
+   - `authenticate` middleware verifies token → sets `req.user`.
+   - `authorize('viewInsurance')` checks permission → allows or denies.
+   - `getPolicyReportHtml` handler extracts policy ID from path.
+   - Calls `getPolicyReportService(123)` → queries DB for policy + remittances.
+   - Calls `generatePolicyReportHtml(data)` → formats into HTML template.
+   - Returns 200 with `text/html` and complete HTML string.
+6. **Frontend receives HTML**: stores in `htmlContent` ref.
+7. **Template renders iframe**: `<iframe :srcdoc="htmlContent">` displays HTML inline.
+8. **User clicks Download PDF**: calls `handleDownloadPdf()`.
+9. **Frontend fetches PDF**:
+   - URL: `GET /insurance/policies/123/report/download`.
+   - Header: `Authorization: Bearer {token}`.
+10. **Backend generates PDF**:
+    - `authenticate` and `authorize` middleware (same).
+    - `downloadPolicyReport` handler calls `generatePolicyPdfReport(123)`.
+    - Acquires PDF concurrency slot (waits if limit reached).
+    - Launches Puppeteer, renders report HTML (or frontend preview if enabled), exports PDF.
+    - Returns 200 with PDF binary, `Content-Disposition: attachment; filename="policy-report-{policyNo}.pdf"`.
+11. **Frontend receives blob**: triggers browser download via `<a href=blob>` trick.
+
+### Security Considerations
+
+- **Authentication**: Both HTML and PDF endpoints require valid Bearer token in `Authorization` header.
+- **Authorization**: Both endpoints require `viewInsurance` permission; user must have this role.
+- **HTML escaping**: All dynamic data in generated HTML is escaped to prevent XSS (user names, policy numbers, amounts).
+- **PDF generation**: Puppeteer runs in sandboxed headless mode with `--no-sandbox` on Linux (note: production should evaluate sandbox policy).
+- **CORS**: Backend respects `CORS_ALLOWED_ORIGINS` env var; frontend must be whitelisted.
+- **Token handling in PDF**: If rendering frontend preview, token is injected into Puppeteer localStorage (not URL param) for auth.
+
+---
+
 ## Cross-cutting Data Flow (high-level)
 
 - Login:
@@ -496,6 +709,9 @@ Module: Insurance front-end APIs
   - Axios interceptor calls `/auth/refresh` with CSRF header → backend rotates refresh session and returns new access token.
 - Insurance operations:
   - Create remittance and cheque flows use DB transactions and `FOR UPDATE` locks; monthly report built via `ExcelJS` and streamed as buffer.
+- Policy reports:
+  - Frontend fetches backend-rendered HTML via Bearer token → backend normalizes DB data → generates A4 HTML with embedded styles → returns to frontend → frontend displays in iframe.
+  - PDF generation: Puppeteer headless browser renders HTML (backend or frontend preview) → emits PDF with A4 format and print margins → returns binary to frontend → browser triggers download.
 
 ---
 
