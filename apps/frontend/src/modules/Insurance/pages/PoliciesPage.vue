@@ -35,6 +35,11 @@ const toast = useToast()
 const router = useRouter()
 const { hasPermission } = usePermissions()
 
+const canEditInsurance = computed(() => hasPermission('editInsurance'))
+const canDeleteInsurance = computed(() => hasPermission('deleteInsurance'))
+const canDeactivateInsurance = computed(() => hasPermission('deactivateInsurance'))
+const canExportPolicyReport = computed(() => hasPermission('exportPolicyReport'))
+
 // Unified User type
 interface UserPolicy {
   id: number
@@ -526,7 +531,7 @@ const getChequeDisplay = (remit: any) => {
       </div>
 
       <div class="action-buttons">
-        <BaseButton variant="primary" @click="isAddPolicyOpen = true">
+        <BaseButton v-if="canEditInsurance" variant="primary" @click="isAddPolicyOpen = true">
           <template #icon>
             <svg
               viewBox="0 0 24 24"
@@ -543,7 +548,7 @@ const getChequeDisplay = (remit: any) => {
           </template>
           Add Policy
         </BaseButton>
-        <BaseButton variant="secondary" @click="isRemittanceOpen = true">
+        <BaseButton v-if="canEditInsurance" variant="secondary" @click="isRemittanceOpen = true">
           <template #icon>
             <svg
               viewBox="0 0 24 24"
@@ -561,7 +566,7 @@ const getChequeDisplay = (remit: any) => {
           </template>
           Add Monthly Remittance
         </BaseButton>
-        <BaseButton variant="secondary" @click="isChequeOpen = true">
+        <BaseButton v-if="canEditInsurance" variant="secondary" @click="isChequeOpen = true">
           <template #icon>
             <svg
               viewBox="0 0 24 24"
@@ -624,6 +629,7 @@ const getChequeDisplay = (remit: any) => {
                 <td>{{ formatDateOnly(user.dateOfMaturity) }}</td>
                 <td class="actions-cell">
                   <BaseButton
+                    v-if="canEditInsurance"
                     variant="edit"
                     :disabled="Number(user.status) === 0"
                     @click="openEditModal(user)"
@@ -651,7 +657,7 @@ const getChequeDisplay = (remit: any) => {
                     Edit
                   </BaseButton>
                   <BaseButton
-                    v-if="hasPermission('deactivateInsurance')"
+                    v-if="canDeactivateInsurance"
                     variant="secondary"
                     :disabled="
                       Number(user.status) === 0 ||
@@ -685,6 +691,7 @@ const getChequeDisplay = (remit: any) => {
                     {{ Number(user.status) === 0 ? "Deactivated" : "Deactivate" }}
                   </BaseButton>
                   <BaseButton
+                    v-if="canExportPolicyReport"
                     variant="print"
                     @click="openPolicyReport(user)"
                     title="Print / Export"
@@ -710,6 +717,7 @@ const getChequeDisplay = (remit: any) => {
                     Print
                   </BaseButton>
                   <BaseButton
+                    v-if="canDeleteInsurance"
                     variant="cancel"
                     @click="confirmDeletePolicy(user)"
                     title="Delete"

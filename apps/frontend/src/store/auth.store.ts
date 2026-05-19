@@ -51,27 +51,16 @@ const getStoredUser = (): AuthUserData | null => {
  * ═══════════════════════════════════════════════════════════════════════════
  */
 const normalizeBackendUser = (data: BackendLoginData): AuthUserData => {
-  const isMe = data.employeeId === "3570";
+  const roleName = data.role;
 
-  const roleName = isMe ? "admin" : data.role;
+  // Trust backend-provided access control and sanitize empty values.
+  const modules = Array.isArray(data.modules)
+    ? data.modules.filter((name): name is string => typeof name === "string" && name.trim().length > 0)
+    : [];
 
-  const modules = isMe
-    ? ["insuranceModule", "payrollModule", "reportsModule", "adminModule"]
-    : data.modules;
-
-  const permissions = isMe
-    ? [
-        "viewInsurance",
-        "editInsurance",
-        "deleteInsurance",
-        "viewSLI",
-        "editSLI",
-        "viewGIS",
-        "editGIS",
-        "viewMonthlyReport",
-        "exportMonthlyReport",
-      ]
-    : data.permissions;
+  const permissions = Array.isArray(data.permissions)
+    ? data.permissions.filter((name): name is string => typeof name === "string" && name.trim().length > 0)
+    : [];
 
   return {
     role: {
