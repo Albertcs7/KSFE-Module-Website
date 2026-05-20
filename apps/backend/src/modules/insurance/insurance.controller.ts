@@ -358,6 +358,8 @@ export const downloadPolicyReport = async (req: IncomingMessage, res: ServerResp
     const url = new URL(req.url || '', `http://${req.headers.host}`);
     const pathParts = url.pathname.split('/').filter(Boolean);
     const policyId = Number(pathParts[pathParts.length - 3]);
+    const deathType = url.searchParams.get('deathType') || 'death';
+    const deathDate = url.searchParams.get('deathDate') || '';
 
     if (!Number.isInteger(policyId) || policyId <= 0) {
       res.writeHead(400);
@@ -365,7 +367,7 @@ export const downloadPolicyReport = async (req: IncomingMessage, res: ServerResp
       return;
     }
 
-    const { buffer, filename } = await generatePolicyPdfReport(policyId);
+    const { buffer, filename } = await generatePolicyPdfReport(policyId, deathType, deathDate);
 
     res.writeHead(200, {
       'Content-Type': 'application/pdf',
@@ -386,6 +388,8 @@ export const getPolicyReportHtml = async (req: IncomingMessage, res: ServerRespo
     const url = new URL(req.url || '', `http://${req.headers.host}`);
     const pathParts = url.pathname.split('/').filter(Boolean);
     const policyId = Number(pathParts[pathParts.length - 3]);
+    const deathType = url.searchParams.get('deathType') || 'death';
+    const deathDate = url.searchParams.get('deathDate') || '';
 
     if (!Number.isInteger(policyId) || policyId <= 0) {
       res.writeHead(400);
@@ -394,7 +398,7 @@ export const getPolicyReportHtml = async (req: IncomingMessage, res: ServerRespo
     }
 
     const reportData = await getPolicyReportService(policyId);
-    const html = generatePolicyReportHtml(reportData);
+    const html = generatePolicyReportHtml(reportData, deathType, deathDate);
 
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
     res.end(html);

@@ -22,6 +22,7 @@ import type {
   InsurancePolicyOption, InsuranceRemittanceForm
 } from '../types/insurance.types'
 
+import PolicyReportDateModal from '../components/PolicyReportDateModal.vue'
 import InsuranceAddUserModal from '../components/shared/InsuranceAddUserModal.vue'
 import InsuranceChequeModal from '../components/shared/InsuranceChequeModal.vue'
 import InsurancePolicyModal from '../components/shared/InsurancePolicyModal.vue'
@@ -135,6 +136,8 @@ const policyToDelete = ref<UserPolicy | null>(null)
 const isDeleteConfirmOpen = ref(false)
 const isDeleting = ref(false)
 const isDeactivatingPolicyNo = ref<string | null>(null)
+const isReportDateModalOpen = ref(false)
+const selectedPolicyForReport = ref<UserPolicy | null>(null)
 
 // --- SEARCH &4 STATE ---
 const selectedEmpCode = ref<string | null>(null)
@@ -308,7 +311,24 @@ const openEditModal = (user: UserPolicy) => {
 }
 
 const openPolicyReport = (policy: UserPolicy) => {
-  router.push(`/insurance/policies/${policy.id}/report`)
+  selectedPolicyForReport.value = policy
+  isReportDateModalOpen.value = true
+}
+
+const handleReportDateModalConfirm = (type: 'death' | 'retirement', date: string) => {
+  if (!selectedPolicyForReport.value) return
+  
+  const formattedDate = date // already in YYYY-MM-DD format
+  router.push({
+    path: `/insurance/policies/${selectedPolicyForReport.value.id}/report`,
+    query: {
+      deathType: type,
+      deathDate: formattedDate
+    }
+  })
+  
+  isReportDateModalOpen.value = false
+  selectedPolicyForReport.value = null
 }
 
 const confirmDeletePolicy = (policy: UserPolicy) => {
@@ -905,6 +925,12 @@ const getChequeDisplay = (remit: any) => {
       :error="null"
       @close="isEditUserOpen = false"
       @submit="handleUpdateUser"
+    />
+    <PolicyReportDateModal
+      :is-open="isReportDateModalOpen"
+      :maturity-date="selectedPolicyForReport?.dateOfMaturity"
+      @close="isReportDateModalOpen = false"
+      @confirm="handleReportDateModalConfirm"
     />
     <ConfirmDialog
       :is-open="isDeleteConfirmOpen"

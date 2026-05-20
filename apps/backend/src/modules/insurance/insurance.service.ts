@@ -425,8 +425,13 @@ const getReportLetterheadDataUrl = () => {
   return '';
 };
 
-export const generatePolicyReportHtml = (reportData: PolicyReportRenderData) => {
+export const generatePolicyReportHtml = (reportData: PolicyReportRenderData, deathType: string = 'death', deathDate: string = '') => {
   const letterheadSrc = getReportLetterheadDataUrl();
+  
+  // Use provided date or fall back to maturity date
+  const displayDate = deathDate || reportData.policy.maturity_date;
+  const dateLabel = deathType === 'retirement' ? 'Date of Retirement' : 'Date of Death';
+  
   const rowsHtml = reportData.remittances.length > 0
     ? reportData.remittances.map((remittance) => `
         <tr>
@@ -635,7 +640,7 @@ export const generatePolicyReportHtml = (reportData: PolicyReportRenderData) => 
             </div>
             <div class="detail-row">
               <div class="detail-inline"><span class="detail-label">Policy No:</span>&nbsp;<span class="detail-value">${escapeHtml(reportData.policy.policy_no)}</span></div>
-              <div class="detail-inline"><span class="detail-label">Date Of Death:</span>&nbsp;<span class="detail-value">${escapeHtml(formatDateLabel(reportData.policy.maturity_date))}</span></div>
+              <div class="detail-inline"><span class="detail-label">${escapeHtml(dateLabel)}:</span>&nbsp;<span class="detail-value">${escapeHtml(formatDateLabel(displayDate))}</span></div>
             </div>
           </section>
 
@@ -710,7 +715,7 @@ export const getPolicyReportService = async (policyId: number) => {
   } as PolicyReportData;
 };
 
-export const generatePolicyPdfReport = async (policyId: number) => {
+export const generatePolicyPdfReport = async (policyId: number, deathType: string = 'death', deathDate: string = '') => {
   const reportData = await getPolicyReportService(policyId);
 
   await acquirePdfSlot();
@@ -722,7 +727,7 @@ export const generatePolicyPdfReport = async (policyId: number) => {
 
   try {
     const page = await browser.newPage();
-    const html = generatePolicyReportHtml(reportData as PolicyReportRenderData);
+    const html = generatePolicyReportHtml(reportData as PolicyReportRenderData, deathType, deathDate);
 
     if (PDF_USE_FRONTEND) {
       try {
@@ -739,7 +744,8 @@ export const generatePolicyPdfReport = async (policyId: number) => {
           }
         }
 
-        const previewUrl = `${FRONTEND_PREVIEW_BASE_URL.replace(/\/+$/, '')}/insurance/policies/${policyId}/report?_ts=${Date.now()}`;
+        const queryString = `deathType=${encodeURIComponent(deathType)}&deathDate=${encodeURIComponent(deathDate)}&_ts=${Date.now()}`;
+        const previewUrl = `${FRONTEND_PREVIEW_BASE_URL.replace(/\/+$/, '')}/insurance/policies/${policyId}/report?${queryString}`;
         await page.goto(previewUrl, { waitUntil: 'networkidle0' });
       } catch (error: any) {
         logger.warn('Frontend policy report preview failed; falling back to backend HTML', {

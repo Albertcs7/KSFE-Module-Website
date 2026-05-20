@@ -15,6 +15,8 @@ const errorMessage = ref("");
 const htmlContent = ref("");
 
 const policyId = computed(() => String(route.params.id || "").trim());
+const deathType = computed(() => String(route.query.deathType || "death").trim());
+const deathDate = computed(() => String(route.query.deathDate || "").trim());
 
 const getFilenameFromResponse = (
   fallbackFilename: string,
@@ -58,7 +60,11 @@ const loadReportHtml = async () => {
 
   try {
     const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
-    const reportUrl = `${baseUrl}/insurance/policies/${policyId.value}/report/html`;
+    const params = new URLSearchParams();
+    if (deathType.value) params.append("deathType", deathType.value);
+    if (deathDate.value) params.append("deathDate", deathDate.value);
+
+    const reportUrl = `${baseUrl}/insurance/policies/${policyId.value}/report/html?${params}`;
 
     const response = await fetch(reportUrl, {
       headers: { Authorization: `Bearer ${token}` },
@@ -81,7 +87,11 @@ const handleDownloadPdf = async () => {
 
   isDownloading.value = true;
   try {
-    const response = await downloadPolicyReport(policyId.value);
+    const params = new URLSearchParams();
+    if (deathType.value) params.append("deathType", deathType.value);
+    if (deathDate.value) params.append("deathDate", deathDate.value);
+
+    const response = await downloadPolicyReport(policyId.value, params.toString());
     const fallbackFilename = `policy-report-${policyId.value}.pdf`;
     const filename = getFilenameFromResponse(
       fallbackFilename,

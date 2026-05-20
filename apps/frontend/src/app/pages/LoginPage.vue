@@ -1,40 +1,40 @@
 <script setup lang="ts">
-import { useAuthStore } from '@/store/auth.store'
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useAuthStore } from "@/store/auth.store";
+import { ref } from "vue";
+import { useRouter } from "vue-router";
 
-const router = useRouter()
-const authStore = useAuthStore()
-const empCode = ref('')
-const password = ref('')
-const errorMsg = ref('')
-const isLoading = ref(false)
-const showPassword = ref(false)
+const router = useRouter();
+const authStore = useAuthStore();
+const empCode = ref("");
+const password = ref("");
+const errorMsg = ref("");
+const isLoading = ref(false);
+const showPassword = ref(false);
 
 const handleLogin = async () => {
-  errorMsg.value = ''
-  
+  errorMsg.value = "";
+
   if (!empCode.value || !password.value) {
-    errorMsg.value = 'Please enter both Employee Code and Password'
-    return
+    errorMsg.value = "Please enter both Employee Code and Password";
+    return;
   }
 
-  isLoading.value = true
+  isLoading.value = true;
 
   try {
     await authStore.login({
       UID: empCode.value,
       password: password.value,
       token: true,
-    })
+    });
 
-    router.push('/')
+    router.push("/");
   } catch (error: any) {
-    errorMsg.value = error?.message || 'Login failed'
+    errorMsg.value = error?.message || "Login failed";
   } finally {
-    isLoading.value = false
+    isLoading.value = false;
   }
-}
+};
 </script>
 
 <template>
@@ -44,46 +44,71 @@ const handleLogin = async () => {
       <div class="login-brand">
         <div class="brand-content">
           <img src="/KSFE SIDE LOGO.png" alt="KSFE Logo" class="login-logo" />
-          <h1 class="brand-title">Welcome to KSFE Hub</h1>
-          <p class="brand-subtitle">Sign in to access your dashboard, then move into insurance and other modules from the navigation menu.</p>
+          <h1 class="brand-title">Welcome to KSFE</h1>
+          <p class="brand-subtitle">
+            Sign in to access your dashboard, then move into insurance and other modules
+            from the navigation menu.
+          </p>
         </div>
         <div class="brand-overlay"></div>
       </div>
-      
+
       <!-- Right side: Form -->
       <div class="login-form-wrapper">
         <div class="login-card">
           <h2>Sign In</h2>
           <p class="text-muted">Enter your credentials to access your workspace</p>
-          
+
           <form @submit.prevent="handleLogin" class="form-container">
             <div class="input-group">
               <label for="empCode">Employee Code</label>
               <div class="input-wrapper">
-                <svg viewBox="0 0 24 24" class="input-icon" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                <input 
-                  id="empCode" 
-                  v-model="empCode" 
-                  type="text" 
+                <svg
+                  viewBox="0 0 24 24"
+                  class="input-icon"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+                <input
+                  id="empCode"
+                  v-model="empCode"
+                  type="text"
                   pattern="[0-9]+"
-                  placeholder="e.g. 3571" 
+                  placeholder="e.g. 3571"
                   :disabled="isLoading"
-                  required 
+                  required
                 />
               </div>
             </div>
-            
+
             <div class="input-group">
               <label for="password">Password</label>
               <div class="input-wrapper">
-                <svg viewBox="0 0 24 24" class="input-icon" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-                <input 
-                  id="password" 
-                  v-model="password" 
-                  :type="showPassword ? 'text' : 'password'" 
-                  placeholder="••••••••" 
+                <svg
+                  viewBox="0 0 24 24"
+                  class="input-icon"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+                <input
+                  id="password"
+                  v-model="password"
+                  :type="showPassword ? 'text' : 'password'"
+                  placeholder="••••••••"
                   :disabled="isLoading"
-                  required 
+                  required
                 />
                 <button
                   type="button"
@@ -92,12 +117,30 @@ const handleLogin = async () => {
                   :disabled="isLoading"
                   :title="showPassword ? 'Hide password' : 'Show password'"
                 >
-                  <svg v-if="showPassword" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <svg
+                    v-if="showPassword"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
                     <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                     <circle cx="12" cy="12" r="3"></circle>
                   </svg>
-                  <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                  <svg
+                    v-else
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path
+                      d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"
+                    ></path>
                     <line x1="1" y1="1" x2="23" y2="23"></line>
                   </svg>
                 </button>
@@ -107,7 +150,7 @@ const handleLogin = async () => {
             <div v-if="errorMsg" class="error-message">
               {{ errorMsg }}
             </div>
-            
+
             <button type="submit" class="btn-submit" :disabled="isLoading">
               <span v-if="isLoading" class="spinner"></span>
               <span v-else>Login</span>
@@ -124,7 +167,7 @@ const handleLogin = async () => {
   min-height: 100vh;
   display: flex;
   background-color: #f7f9fc;
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
 }
 
 .login-split {
@@ -149,8 +192,12 @@ const handleLogin = async () => {
 .brand-overlay {
   position: absolute;
   inset: 0;
-  background-image: radial-gradient(circle at top right, rgba(204, 242, 92, 0.15), transparent 40%),
-                    radial-gradient(circle at bottom left, rgba(204, 242, 92, 0.1), transparent 40%);
+  background-image: radial-gradient(
+      circle at top right,
+      rgba(204, 242, 92, 0.15),
+      transparent 40%
+    ),
+    radial-gradient(circle at bottom left, rgba(204, 242, 92, 0.1), transparent 40%);
   pointer-events: none;
 }
 
@@ -165,7 +212,7 @@ const handleLogin = async () => {
 .login-logo {
   height: 90px;
   margin-bottom: 2rem;
-  filter: drop-shadow(0 4px 12px rgba(0,0,0,0.15));
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.15));
 }
 
 .brand-title {
@@ -306,14 +353,16 @@ const handleLogin = async () => {
 .spinner {
   width: 1.5rem;
   height: 1.5rem;
-  border: 3px solid rgba(255,255,255,0.3);
+  border: 3px solid rgba(255, 255, 255, 0.3);
   border-radius: 50%;
   border-top-color: #fff;
   animation: spin 1s ease-in-out infinite;
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .toggle-password {
@@ -348,20 +397,20 @@ const handleLogin = async () => {
   .login-split {
     flex-direction: column;
   }
-  
+
   .login-brand {
     flex: none;
     padding: 3rem 1.5rem;
   }
-  
+
   .login-logo {
     height: 60px;
   }
-  
+
   .brand-title {
     font-size: 2rem;
   }
-  
+
   .login-form-wrapper {
     padding: 3rem 1.5rem;
   }

@@ -145,11 +145,16 @@ export const getPolicyReport = (policyId: string | number) => {
   return api.get<PolicyReportResponse>(`/insurance/policies/${policyId}/report`);
 };
 
-export const downloadPolicyReport = (policyId: string | number) => {
+export const downloadPolicyReport = (policyId: string | number, queryString?: string) => {
   // Add a timestamp to avoid cached responses and force backend regeneration
   const ts = Date.now();
+  const params = new URLSearchParams({ _ts: String(ts) });
+  if (queryString) {
+    params.append('deathType', new URLSearchParams(queryString).get('deathType') || 'death');
+    params.append('deathDate', new URLSearchParams(queryString).get('deathDate') || '');
+  }
   return api.get(`/insurance/policies/${policyId}/report/download`, {
-    params: { _ts: ts },
+    params: Object.fromEntries(params),
     responseType: "blob",
   });
 };
