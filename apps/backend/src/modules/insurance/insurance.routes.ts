@@ -1,5 +1,6 @@
 import { IncomingMessage, ServerResponse } from "http";
 import { authenticate, authorize, type AuthenticatedRequest } from "../../core/auth/auth.middleware";
+import { validateCsrf } from "../../core/auth/csrf.middleware";
 import { runMiddlewares } from "../../core/http/middlewareRunner";
 import { createCheque, createPolicy, createRemittance, deactivatePolicy, deletePolicy, downloadPolicyReport, getAllPolicies, getMonthlyReport, getPolicyReport, getPolicyReportHtml, searchPolicies, updatePolicy } from "./insurance.controller";
 
@@ -50,42 +51,42 @@ export const insuranceRoutes = async (
 
   // POST ADDING EMPLOYEE POLICIES ✅
   if (req.method === "POST" && req.url === "/insurance/policies") {
-    if (!requireAccess("editInsurance")) return true;
+    if (!runMiddlewares(guardedReq, res, [authenticate, authorize("editInsurance"), validateCsrf])) return true;
     await createPolicy(req, res);
     return true;
   }
-  
-  // POST ADD REMITTANCE 
+
+  // POST ADD REMITTANCE
   if (req.method === "POST" && req.url === "/insurance/remittance") {
-    if (!requireAccess("editInsurance")) return true;
+    if (!runMiddlewares(guardedReq, res, [authenticate, authorize("editInsurance"), validateCsrf])) return true;
     await createRemittance(req, res);
     return true;
   }
 
   // POST CREATE CHEQUE
   if (req.method === "POST" && req.url === "/insurance/cheque") {
-    if (!requireAccess("editInsurance")) return true;
+    if (!runMiddlewares(guardedReq, res, [authenticate, authorize("editInsurance"), validateCsrf])) return true;
     await createCheque(req, res);
     return true;
   }
 
   // PUT UPDATE POLICY
   if (req.method === "PUT" && req.url?.startsWith("/insurance/policies/")) {
-    if (!requireAccess("editInsurance")) return true;
+    if (!runMiddlewares(guardedReq, res, [authenticate, authorize("editInsurance"), validateCsrf])) return true;
     await updatePolicy(req, res);
     return true;
   }
 
   // PATCH DEACTIVATE POLICY
   if (req.method === "PATCH" && req.url?.startsWith("/insurance/policies/") && req.url?.endsWith("/deactivate")) {
-    if (!requireAccess("deactivateInsurance")) return true;
+    if (!runMiddlewares(guardedReq, res, [authenticate, authorize("deactivateInsurance"), validateCsrf])) return true;
     await deactivatePolicy(req, res);
     return true;
   }
 
   // DELETE POLICY
   if (req.method === "DELETE" && req.url?.startsWith("/insurance/policies/")) {
-    if (!requireAccess("editInsurance")) return true;
+    if (!runMiddlewares(guardedReq, res, [authenticate, authorize("editInsurance"), validateCsrf])) return true;
     await deletePolicy(req, res);
     return true;
   }

@@ -46,10 +46,17 @@ refreshClient.interceptors.request.use((config) => {
 axiosInstance.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token");
+    const csrfToken = getCookie("XSRF-TOKEN");
+
+    config.headers = config.headers ?? {};
 
     if (token) {
-      config.headers = config.headers ?? {};
       config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    // Add CSRF token for state-changing operations
+    if (csrfToken && ["POST", "PUT", "PATCH", "DELETE"].includes(config.method?.toUpperCase() || "")) {
+      config.headers["x-csrf-token"] = csrfToken;
     }
 
     return config;
