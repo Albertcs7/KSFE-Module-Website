@@ -1,11 +1,18 @@
-import { IncomingMessage, ServerResponse } from "http";
+import { Request, Response } from "express";
 import { logger } from "../../core/logger/logger";
-import { parseBody } from "../../utils/parseBody";
 import { createChequeAndAttachService, createPolicyService, createRemittanceService, deactivatePolicyService, deletePolicyService, generateMonthlyExcelReport, generatePolicyPdfReport, generatePolicyReportHtml, getAllPoliciesService, getPolicyReportService, searchPoliciesService, updatePolicyService } from "./insurance.service";
 
+const firstQueryValue = (value: string | string[] | undefined): string | undefined => {
+  if (Array.isArray(value)) {
+    return value[0];
+  }
+
+  return value || undefined;
+};
+
 export const getAllPolicies = async (
-  req: IncomingMessage,
-  res: ServerResponse
+  req: Request,
+  res: Response
 ) => {
   try {
     const data = await getAllPoliciesService();
@@ -23,17 +30,16 @@ export const getAllPolicies = async (
 /*SEARCH BY EMPLOYEE CODE*/
 
 export const searchPolicies = async (
-  req: IncomingMessage,
-  res: ServerResponse
+  req: Request,
+  res: Response
 ) => {
   try {
     // Extract query parameters: ?empCode=3571&empName=john&limit=50&offset=0
-    const url = new URL(req.url || "", `http://${req.headers.host}`);
-    const empCode = url.searchParams.get("empCode") || undefined;
-    const empName = url.searchParams.get("empName") || undefined;
-    const policyNo = url.searchParams.get("policyNo") || undefined;
-    const limit = url.searchParams.get("limit") ? parseInt(url.searchParams.get("limit")!) : 100;
-    const offset = url.searchParams.get("offset") ? parseInt(url.searchParams.get("offset")!) : 0;
+    const empCode = firstQueryValue(req.query.empCode as any);
+    const empName = firstQueryValue(req.query.empName as any);
+    const policyNo = firstQueryValue(req.query.policyNo as any);
+    const limit = firstQueryValue(req.query.limit as any) ? parseInt(firstQueryValue(req.query.limit as any)!) : 100;
+    const offset = firstQueryValue(req.query.offset as any) ? parseInt(firstQueryValue(req.query.offset as any)!) : 0;
 
     const result = await searchPoliciesService({
       empCode,
@@ -54,11 +60,11 @@ export const searchPolicies = async (
 /* ADDING THE EMPLOYEE POLICIES */
 
 export const createPolicy = async (
-  req: IncomingMessage,
-  res: ServerResponse
+  req: Request,
+  res: Response
 ) => {
   try {
-    const body = await parseBody(req);
+    const body = req.body;
 
     const result = await createPolicyService(body);
 
@@ -77,11 +83,11 @@ export const createPolicy = async (
 //Remitance function
 
 export const createRemittance = async (
-  req: IncomingMessage,
-  res: ServerResponse
+  req: Request,
+  res: Response
 ) => {
   try {
-    const body = await parseBody(req);
+    const body = req.body;
     
     const {
       empCode,
@@ -133,16 +139,14 @@ export const createRemittance = async (
 /* UPDATE POLICY */
 
 export const updatePolicy = async (
-  req: IncomingMessage,
-  res: ServerResponse
+  req: Request,
+  res: Response
 ) => {
   try {
-    const body = await parseBody(req);
+    const body = req.body;
 
     // Extract policy number from URL
-    const url = new URL(req.url || "", `http://${req.headers.host}`);
-    const pathParts = url.pathname.split("/");
-    const policyNo = pathParts[pathParts.length - 1];
+    const policyNo = String(req.params.policyNo || "");
 
     if (!policyNo) {
       res.writeHead(400);
@@ -179,13 +183,11 @@ export const updatePolicy = async (
 };
 
 export const deletePolicy = async (
-  req: IncomingMessage,
-  res: ServerResponse
+  req: Request,
+  res: Response
 ) => {
   try {
-    const url = new URL(req.url || "", `http://${req.headers.host}`);
-    const pathParts = url.pathname.split("/");
-    const policyNo = pathParts[pathParts.length - 1];
+    const policyNo = String(req.params.policyNo || "");
 
     if (!policyNo) {
       res.writeHead(400);
@@ -210,13 +212,11 @@ export const deletePolicy = async (
 };
 
 export const deactivatePolicy = async (
-  req: IncomingMessage,
-  res: ServerResponse
+  req: Request,
+  res: Response
 ) => {
   try {
-    const url = new URL(req.url || "", `http://${req.headers.host}`);
-    const pathParts = url.pathname.split("/");
-    const policyNo = pathParts[pathParts.length - 2];
+    const policyNo = String(req.params.policyNo || "");
 
     if (!policyNo) {
       res.writeHead(400);
@@ -245,11 +245,11 @@ ADDING CHEQUE DETAILS
 ---------------------*/
 
 export const createCheque = async (
-  req: IncomingMessage,
-  res: ServerResponse
+  req: Request,
+  res: Response
 ) => {
   try {
-    const body = await parseBody(req);
+    const body = req.body;
 
     const {
       encashmentDate,
@@ -285,12 +285,11 @@ export const createCheque = async (
   }
 };
 
-export const getMonthlyReport = async (req: IncomingMessage, res: ServerResponse) => {
+export const getMonthlyReport = async (req: Request, res: Response) => {
   try {
-    const url = new URL(req.url || "", `http://${req.headers.host}`);
-    const type = (url.searchParams.get("type") || "").toUpperCase();
-    const month = url.searchParams.get("month") || ""; // expected MM
-    const year = url.searchParams.get("year") || ""; // expected YYYY
+    const type = String(firstQueryValue(req.query.type as any) || "").toUpperCase();
+    const month = String(firstQueryValue(req.query.month as any) || ""); // expected MM
+    const year = String(firstQueryValue(req.query.year as any) || ""); // expected YYYY
 
     // Basic validation
     if (!type || !["GIS", "SLI"].includes(type)) {
@@ -327,11 +326,9 @@ export const getMonthlyReport = async (req: IncomingMessage, res: ServerResponse
   }
 };
 
-export const getPolicyReport = async (req: IncomingMessage, res: ServerResponse) => {
+export const getPolicyReport = async (req: Request, res: Response) => {
   try {
-    const url = new URL(req.url || '', `http://${req.headers.host}`);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    const policyId = Number(pathParts[pathParts.length - 2]);
+    const policyId = Number(req.params.policyId);
 
     if (!Number.isInteger(policyId) || policyId <= 0) {
       res.writeHead(400);
@@ -353,13 +350,11 @@ export const getPolicyReport = async (req: IncomingMessage, res: ServerResponse)
   }
 };
 
-export const downloadPolicyReport = async (req: IncomingMessage, res: ServerResponse) => {
+export const downloadPolicyReport = async (req: Request, res: Response) => {
   try {
-    const url = new URL(req.url || '', `http://${req.headers.host}`);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    const policyId = Number(pathParts[pathParts.length - 3]);
-    const deathType = url.searchParams.get('deathType') || 'death';
-    const deathDate = url.searchParams.get('deathDate') || '';
+    const policyId = Number(req.params.policyId);
+    const deathType = String(firstQueryValue(req.query.deathType as any) || 'death');
+    const deathDate = String(firstQueryValue(req.query.deathDate as any) || '');
 
     if (!Number.isInteger(policyId) || policyId <= 0) {
       res.writeHead(400);
@@ -383,13 +378,11 @@ export const downloadPolicyReport = async (req: IncomingMessage, res: ServerResp
   }
 };
 
-export const getPolicyReportHtml = async (req: IncomingMessage, res: ServerResponse) => {
+export const getPolicyReportHtml = async (req: Request, res: Response) => {
   try {
-    const url = new URL(req.url || '', `http://${req.headers.host}`);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    const policyId = Number(pathParts[pathParts.length - 3]);
-    const deathType = url.searchParams.get('deathType') || 'death';
-    const deathDate = url.searchParams.get('deathDate') || '';
+    const policyId = Number(req.params.policyId);
+    const deathType = String(firstQueryValue(req.query.deathType as any) || 'death');
+    const deathDate = String(firstQueryValue(req.query.deathDate as any) || '');
 
     if (!Number.isInteger(policyId) || policyId <= 0) {
       res.writeHead(400);

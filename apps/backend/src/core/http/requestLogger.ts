@@ -1,4 +1,4 @@
-import { IncomingMessage, ServerResponse } from "http";
+import { Request, Response } from "express";
 import { logger } from "../logger/logger";
 
 const getRoute = (url?: string): string => {
@@ -13,7 +13,7 @@ const getRoute = (url?: string): string => {
   }
 };
 
-export const attachRequestLogger = (req: IncomingMessage, res: ServerResponse): void => {
+export const attachRequestLogger = (req: Request, res: Response): void => {
   const startedAt = process.hrtime.bigint();
 
   res.once("finish", () => {

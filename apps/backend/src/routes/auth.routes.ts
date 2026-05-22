@@ -1,27 +1,24 @@
-import { IncomingMessage, ServerResponse } from "http";
+import { Router, type NextFunction, type Request, type Response } from "express";
 import { loginController, logoutController, refreshController } from "../core/auth/auth.contoller";
 
-export const authRoutes = async (
-  req: IncomingMessage,
-  res: ServerResponse
-): Promise<boolean> => {
-  // POST LOGIN (Public - no token required)
-  if (req.method === "POST" && req.url?.startsWith("/auth/login")) {
-    await loginController(req, res);
-    return true;
-  }
-
-  // POST REFRESH (Public - uses refresh token cookie)
-  if (req.method === "POST" && req.url?.startsWith("/auth/refresh")) {
-    await refreshController(req, res);
-    return true;
-  }
-
-  // POST LOGOUT (Protected - requires Authorization: Bearer <token>)
-  if (req.method === "POST" && req.url?.startsWith("/auth/logout")) {
-    await logoutController(req, res);
-    return true;
-  }
-
-  return false; // ✅ important
+const asyncRoute = (
+  handler: (req: Request, res: Response, next: NextFunction) => Promise<void> | void
+) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    Promise.resolve(handler(req, res, next)).catch(next);
+  };
 };
+
+export const authRoutes = Router();
+
+authRoutes.post("/auth/login", asyncRoute(async (req, res) => {
+  await loginController(req, res);
+}));
+
+authRoutes.post("/auth/refresh", asyncRoute(async (req, res) => {
+  await refreshController(req, res);
+}));
+
+authRoutes.post("/auth/logout", asyncRoute(async (req, res) => {
+  await logoutController(req, res);
+}));

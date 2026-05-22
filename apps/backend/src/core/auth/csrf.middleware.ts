@@ -1,4 +1,4 @@
-import { ServerResponse } from "http";
+import { NextFunction, Response } from "express";
 import { CSRF_COOKIE_NAME, CSRF_HEADER_NAME } from "../../config/env";
 import { AuthenticatedRequest } from "./auth.middleware";
 
@@ -20,13 +20,15 @@ const getHeaderValue = (headers: any, headerName: string) => {
 
 export const validateCsrf = (
   req: AuthenticatedRequest,
-  res: ServerResponse
-): boolean => {
+  res: Response,
+  next: NextFunction
+): void => {
   const method = req.method?.toUpperCase() || "";
 
   // Only validate CSRF for state-changing requests
   if (!["POST", "PUT", "PATCH", "DELETE"].includes(method)) {
-    return true;
+    next();
+    return;
   }
 
   const cookies = parseCookies(req.headers.cookie);
@@ -34,16 +36,14 @@ export const validateCsrf = (
   const csrfCookieToken = cookies[CSRF_COOKIE_NAME];
 
   if (!csrfCookieToken || !csrfHeaderToken) {
-    res.statusCode = 403;
-    res.end(JSON.stringify({ message: "CSRF token missing" }));
-    return false;
+    res.status(403).json({ message: "CSRF token missing" });
+    return;
   }
 
   if (csrfHeaderToken !== csrfCookieToken) {
-    res.statusCode = 403;
-    res.end(JSON.stringify({ message: "Invalid CSRF token" }));
-    return false;
+    res.status(403).json({ message: "Invalid CSRF token" });
+    return;
   }
 
-  return true;
+  next();
 };

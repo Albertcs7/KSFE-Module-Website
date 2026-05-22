@@ -1,24 +1,24 @@
-import { IncomingMessage, ServerResponse } from "http";
+import { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import { JWT_AUDIENCE, JWT_ISSUER, JWT_SECRET } from "../../config/env";
 import type { AuthTokenClaims } from "./auth.session";
 
-export interface AuthenticatedRequest extends IncomingMessage {
+export interface AuthenticatedRequest extends Request {
   user?: AuthTokenClaims & jwt.JwtPayload;
 }
 
 // Authentication
 export const authenticate = (
   req: AuthenticatedRequest,
-  res: ServerResponse
-): boolean => {
+  res: Response,
+  next: NextFunction
+): void => {
   try {
     const authHeader = req.headers["authorization"];
 
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      res.statusCode = 401;
-      res.end(JSON.stringify({ message: "Unauthorized" }));
-      return false;
+      res.status(401).json({ message: "Unauthorized" });
+      return;
     }
 
     const token = authHeader.split(" ")[1];
@@ -31,32 +31,28 @@ export const authenticate = (
 
     req.user = decoded;
 
-    return true;
+    next();
   } catch {
-    res.statusCode = 401;
-    res.end(JSON.stringify({ message: "Invalid token" }));
-    return false;
+    res.status(401).json({ message: "Invalid token" });
   }
 };
 
 // Authorization
 export const authorize = (requiredPermission: string) => {
-  return (req: AuthenticatedRequest, res: ServerResponse): boolean => {
+  return (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
     if (!req.user) {
-      res.statusCode = 401;
-      res.end(JSON.stringify({ message: "Unauthorized" }));
-      return false;
+      res.status(401).json({ message: "Unauthorized" });
+      return;
     }
 
     const userPermissions = Array.isArray(req.user.permissions) ? req.user.permissions : [];
 
     if (!userPermissions.includes(requiredPermission)) {
-      res.statusCode = 403;
-      res.end(JSON.stringify({ message: "Forbidden" }));
-      return false;
+      res.status(403).json({ message: "Forbidden" });
+      return;
     }
 
-    return true;
+    next();
   };
 };
 

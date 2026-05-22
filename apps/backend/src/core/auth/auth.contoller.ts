@@ -1,40 +1,9 @@
-import { IncomingMessage, ServerResponse } from "http";
+import { Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import { ACCESS_TOKEN_EXPIRES_IN, CSRF_COOKIE_NAME, CSRF_HEADER_NAME, JWT_AUDIENCE, JWT_ISSUER, JWT_SECRET, NODE_ENV, REFRESH_COOKIE_NAME, REFRESH_TOKEN_SECRET } from "../../config/env";
 import { loginService } from "./auth.service";
 import { revokeRefreshSession, rotateRefreshSession } from "./auth.session";
 import { loginBody } from "./auth.types";
-
-/**
- * Reads and parses a JSON request body from an incoming HTTP request.
- *
- * @typeParam T - Expected shape of the parsed body.
- * @param req - Node.js incoming request stream.
- * @returns Promise resolving to the parsed body object.
- * @throws Error when the body is invalid JSON or stream reading fails.
- */
-const parseBody = async <T>(req: IncomingMessage): Promise<T> => {
-  return new Promise((resolve, reject) => {
-    let body = "";
-
-    req.on("data", (chunk) => {
-      body += chunk;
-        });
-
-    req.on("end", () => {
-      try {
-                const parsed = JSON.parse(body || "{}");
-                resolve(parsed as T);
-      } catch {
-                reject(new Error("Invalid JSON"));
-            }
-        });
-
-        req.on("error", () => {
-      reject(new Error("Error reading request body"));
-        });
-    });
-};
 
 const parseCookies = (cookieHeader: string | undefined) => {
   const cookies: Record<string, string> = {};
@@ -47,7 +16,7 @@ const parseCookies = (cookieHeader: string | undefined) => {
   return cookies;
 };
 
-const getHeaderValue = (headers: IncomingMessage["headers"], headerName: string) => {
+const getHeaderValue = (headers: Request["headers"], headerName: string) => {
   const lowerHeader = headerName.toLowerCase();
   const value = headers[lowerHeader];
   if (Array.isArray(value)) return value[0];
@@ -83,12 +52,11 @@ const secureCookieOptions = () => {
  * - 400: Missing required fields or invalid request payload.
  */
 export const loginController = async (
-  req: IncomingMessage,
-  res: ServerResponse
+  req: Request,
+  res: Response
 ) => {
   try {
-    // ✅ Strongly typed request body
-    const body = await parseBody<loginBody>(req);
+    const body = req.body as loginBody;
 
     // (Optional) Basic validation
     if (!body.UID || !body.password) {
@@ -125,7 +93,7 @@ export const loginController = async (
   }
 };
 
-export const refreshController = async (req: IncomingMessage, res: ServerResponse) => {
+export const refreshController = async (req: Request, res: Response) => {
   try {
     const cookies = parseCookies(req.headers.cookie);
     const csrfHeader = getHeaderValue(req.headers, CSRF_HEADER_NAME);
@@ -164,7 +132,7 @@ export const refreshController = async (req: IncomingMessage, res: ServerRespons
   }
 };
 
-export const logoutController = async (req: IncomingMessage, res: ServerResponse) => {
+export const logoutController = async (req: Request, res: Response) => {
   const cookies = parseCookies(req.headers.cookie);
   const csrfHeader = getHeaderValue(req.headers, CSRF_HEADER_NAME);
 
