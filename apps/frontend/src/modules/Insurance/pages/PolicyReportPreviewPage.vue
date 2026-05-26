@@ -206,7 +206,6 @@ watch(policyId, loadReportHtml);
 }
 
 .status-card.error {
-  border-color: #fecaca;
   background: #fef2f2;
   color: #b91c1c;
 }

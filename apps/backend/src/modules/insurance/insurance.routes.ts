@@ -1,6 +1,8 @@
 import { Router, type NextFunction, type Request, type Response } from "express";
+import { param, query } from "express-validator";
 import { authenticate, authorize } from "../../core/auth/auth.middleware";
 import { validateCsrf } from "../../core/auth/csrf.middleware";
+import { validateRequest } from "../../core/http/validation.middleware";
 import { createCheque, createPolicy, createRemittance, deactivatePolicy, deletePolicy, downloadPolicyReport, getAllPolicies, getMonthlyReport, getPolicyReport, getPolicyReportHtml, searchPolicies, updatePolicy } from "./insurance.controller";
 
 const asyncRoute = (
@@ -19,14 +21,37 @@ const requireEdit = [authenticate, authorize("editInsurance"), validateCsrf] as 
 // Search insurance policies using query parameters (filters, paging)
 router.get("/insurance/policies/search", ...requireAccess("viewInsurance"), asyncRoute(async (req, res) => { await searchPolicies(req, res); }));
 
-// Get a generated report for a specific policy (binary or PDF response)
-router.get("/insurance/policies/:policyId/report", ...requireAccess("viewInsurance"), asyncRoute(async (req, res) => { await getPolicyReport(req, res); }));
+// Validation for report routes: ensure positive integer policyId and optional query params
+const reportValidators = [
+  param("policyId").isInt({ gt: 0 }).withMessage("policyId must be a positive integer").toInt(),
+  query("deathType").optional().isString().isLength({ max: 50 }).withMessage("deathType must be a short string"),
+  query("deathDate").optional().isISO8601().withMessage("deathDate must be a valid date (YYYY-MM-DD)"),
+  validateRequest,
+];
+
+// Get a generated report for a specific policy (JSON/binary response)
+router.get(
+  "/insurance/policies/:policyId/report",
+  ...requireAccess("viewInsurance"),
+  ...reportValidators,
+  asyncRoute(async (req, res) => { await getPolicyReport(req, res); })
+);
 
 // Get the policy report rendered as HTML
-router.get("/insurance/policies/:policyId/report/html", ...requireAccess("viewInsurance"), asyncRoute(async (req, res) => { await getPolicyReportHtml(req, res); }));
+router.get(
+  "/insurance/policies/:policyId/report/html",
+  ...requireAccess("viewInsurance"),
+  ...reportValidators,
+  asyncRoute(async (req, res) => { await getPolicyReportHtml(req, res); })
+);
 
 // Download the policy report as an attachment
-router.get("/insurance/policies/:policyId/report/download", ...requireAccess("viewInsurance"), asyncRoute(async (req, res) => { await downloadPolicyReport(req, res); }));
+router.get(
+  "/insurance/policies/:policyId/report/download",
+  ...requireAccess("viewInsurance"),
+  ...reportValidators,
+  asyncRoute(async (req, res) => { await downloadPolicyReport(req, res); })
+);
 
 // List all policies (supports paging and basic filters)
 router.get("/insurance/policies", ...requireAccess("viewInsurance"), asyncRoute(async (req, res) => { await getAllPolicies(req, res); }));

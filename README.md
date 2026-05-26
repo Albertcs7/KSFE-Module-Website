@@ -34,7 +34,7 @@ Monorepo for the KSFE internal website. The repository contains a TypeScript bac
 From the repository root:
 
 ```bash
-npm install
+npm install 
 ```
 
 ## Run (development)
