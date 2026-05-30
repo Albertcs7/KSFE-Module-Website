@@ -4,3 +4,4 @@ entering remittance=>
 
     date format should be => YY-MM-DD (26-03-12)
 
+excel file should be in the same folder as the script
