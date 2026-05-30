@@ -35,7 +35,7 @@ CREATE TABLE `employee_policy` (
   UNIQUE KEY `uniq_policy_no` (`policy_no`),
   KEY `idx_emp_code` (`employee_code`),
   CONSTRAINT `employee_policy_chk_1` CHECK ((`status` in (0,1)))
-) ENGINE=InnoDB AUTO_INCREMENT=20093 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=20093 DEFAULT CHARSET=utf8mb4;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -65,7 +65,7 @@ CREATE TABLE `policy_cheque` (
   PRIMARY KEY (`policy_cheque_id`),
   KEY `idx_salary_month` (`salary_month`),
   KEY `idx_encashment_date` (`encashment_date`)
-) ENGINE=InnoDB AUTO_INCREMENT=123 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=123 DEFAULT CHARSET=utf8mb4 ;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -99,7 +99,7 @@ CREATE TABLE `policy_remittance` (
   KEY `idx_salary_month` (`salary_month`),
   CONSTRAINT `fk_remittance_cheque` FOREIGN KEY (`policy_cheque_id`) REFERENCES `policy_cheque` (`policy_cheque_id`) ON DELETE SET NULL,
   CONSTRAINT `fk_remittance_employee_policy` FOREIGN KEY (`employee_policy_id`) REFERENCES `employee_policy` (`employee_policy_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=19492 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=19492 DEFAULT CHARSET=utf8mb4 ;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
